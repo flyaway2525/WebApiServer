@@ -1,0 +1,2 @@
+# WebApiServer
+用途は決めてないけどAPIServerを作る練習がてら
