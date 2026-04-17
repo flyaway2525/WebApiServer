@@ -58,7 +58,8 @@ React Web クライアント、将来の Unity クライアント、Express API 
 
 ## Troubleshooting
 
-- `localhost:5173` が 404 の場合は、Run and Debug の Web 起動設定が `web` を root にしているか確認してください
+- Run and Debug の Web 起動で `Unknown option --root` が出る場合は、Web の launch 設定が `cwd=web` で `vite.config.ts` を読みに行く形になっているか確認してください
+- `localhost:5173` が 404 の場合は、古い Web デバッグプロセスが残っていないか確認して再起動してください
 - Vite が `5174` など別ポートに逃げる場合は、`5173` を使っている既存プロセスを停止してください
 - `npm` が PowerShell の実行ポリシーで失敗する場合は、VS Code をリロードして新しい統合ターミナルを開いてください
 - `./data/app.db` を開けないエラーが出る場合は、API の DB 初期化順序が崩れていないか確認してください

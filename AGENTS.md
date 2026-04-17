@@ -39,7 +39,7 @@ The current goal is to support local development on Windows without requiring a 
 ## Important Implementation Notes
 
 - The API database client in `api/src/db.ts` is created lazily. Do not move client creation back to module top-level unless startup ordering is reconsidered.
-- The Vite debug launch must include `--root web`; otherwise `http://localhost:5173/` may return 404 while serving from the workspace root.
+- The Vite debug launch must run with `cwd=web` and load `vite.config.ts` from that directory. Passing `--root web` to the current Vite CLI fails with `Unknown option --root`.
 - On PowerShell, use the workspace terminal profile so `npm.cmd` is used instead of `npm.ps1`.
 - `Task Explorer` was removed from recommendations because it failed extension validation in this environment. Prefer standard VS Code tasks.
 
@@ -53,7 +53,7 @@ The current goal is to support local development on Windows without requiring a 
 ## Troubleshooting
 
 - If `node --version` works but `npm` fails in the integrated terminal, open a new terminal after reloading the window so the workspace PowerShell profile is applied.
-- If the web server starts but `localhost:5173` returns 404, verify the Run and Debug `Web` configuration still includes `--root web`.
+- If the web server fails to start in Run and Debug with `Unknown option --root`, verify the `Web` configuration still starts from `cwd=web` and uses `vite.config.ts` from that directory.
 - If Vite switches to another port like `5174`, something is already using `5173`.
 - If the API fails to open `./data/app.db`, check whether startup ordering in `api/src/db.ts` was changed.
 
