@@ -1,0 +1,92 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Setup Local Environment",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"setup.bat",
+				"install"
+			],
+			"isBackground": false,
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"clear": true
+			}
+		},
+		{
+			"label": "Start Development Environment",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"setup.bat",
+				"dev"
+			],
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Workspace",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"setup.bat",
+				"build"
+			],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"clear": true
+			}
+		},
+		{
+			"label": "Start API Only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"setup.bat",
+				"dev:api"
+			],
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Start Web Only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"setup.bat",
+				"dev:web"
+			],
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		}
+	]
+}

@@ -1,0 +1,57 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/.tools/node/current/node.exe",
+      "runtimeArgs": [
+        "--enable-source-maps",
+        "./node_modules/tsx/dist/cli.mjs",
+        "watch",
+        "api/src/server.ts"
+      ],
+      "envFile": "${workspaceFolder}/api/.env",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "name": "Web",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/.tools/node/current/node.exe",
+      "runtimeArgs": [
+        "./node_modules/vite/bin/vite.js",
+        "--config",
+        "web/vite.config.ts",
+        "--root",
+        "web"
+      ],
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "serverReadyAction": {
+        "pattern": "(http://localhost:5173)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run Full Stack",
+      "configurations": [
+        "API",
+        "Web"
+      ],
+      "preLaunchTask": "Setup Local Environment",
+      "stopAll": true
+    }
+  ]
+}

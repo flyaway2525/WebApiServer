@@ -1,0 +1,231 @@
+:root {
+  font-family: 'Noto Sans JP', sans-serif;
+  color: #f6f2e8;
+  background:
+    radial-gradient(circle at top left, rgba(242, 174, 73, 0.3), transparent 28%),
+    radial-gradient(circle at right, rgba(69, 147, 175, 0.22), transparent 24%),
+    linear-gradient(145deg, #131922 0%, #1f2836 55%, #0c1118 100%);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+a {
+  color: #fff4c2;
+  text-decoration: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0 64px;
+}
+
+.hero-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.hero-panel::after {
+  content: '';
+  position: absolute;
+  inset: auto -70px -90px auto;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 174, 73, 0.7), transparent 70%);
+  filter: blur(20px);
+}
+
+.eyebrow,
+h1,
+h2,
+button,
+.status-pill {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f2ae49;
+  font-size: 0.78rem;
+}
+
+h1 {
+  margin: 0;
+  max-width: 780px;
+  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  line-height: 0.96;
+}
+
+.lead {
+  max-width: 640px;
+  margin: 18px 0 0;
+  font-size: 1.05rem;
+  color: rgba(246, 242, 232, 0.8);
+}
+
+.hero-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.hero-links a {
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.glass-card {
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 14, 20, 0.54);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.24);
+}
+
+.accent-card {
+  background: linear-gradient(180deg, rgba(34, 47, 64, 0.92), rgba(14, 18, 24, 0.86));
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+}
+
+.muted {
+  color: rgba(246, 242, 232, 0.6);
+}
+
+.error-banner {
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: #ffd6cf;
+  background: rgba(135, 33, 11, 0.34);
+}
+
+.task-list {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 0;
+}
+
+.task-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.task-item p {
+  margin: 6px 0 0;
+  color: rgba(246, 242, 232, 0.62);
+  font-size: 0.92rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.status-todo {
+  background: rgba(73, 116, 242, 0.22);
+  color: #bdd0ff;
+}
+
+.status-doing {
+  background: rgba(242, 174, 73, 0.18);
+  color: #ffd894;
+}
+
+.status-done {
+  background: rgba(101, 194, 129, 0.18);
+  color: #c6f3d2;
+}
+
+.task-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.task-form label {
+  color: rgba(246, 242, 232, 0.74);
+}
+
+.task-form input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.task-form button {
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 16px;
+  color: #131922;
+  background: linear-gradient(135deg, #f2ae49, #fff4c2);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.task-form button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel,
+  .glass-card {
+    padding: 22px;
+  }
+}
