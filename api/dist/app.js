@@ -2,8 +2,16 @@ import cors from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { config } from './config.js';
-import { createSpace, createTask, listSpaceMembers, listSpaces, listTasks } from './db.js';
+import { createSpace, createSpaceTransaction, createTask, joinSpaceAsGuest, listSpaceMembers, listSpaces, listSpaceTransactions, listTasks } from './db.js';
 import { openApiSpecification } from './swagger.js';
+function parseSpaceId(request, response) {
+    const spaceId = Number(request.params.spaceId);
+    if (!Number.isInteger(spaceId) || spaceId <= 0) {
+        response.status(400).json({ message: 'spaceId must be a positive integer' });
+        return null;
+    }
+    return spaceId;
+}
 export function createApp() {
     const app = express();
     app.use(cors({
@@ -49,13 +57,25 @@ export function createApp() {
         }
     });
     app.get('/api/spaces/:spaceId/members', async (request, response, next) => {
-        const spaceId = Number(request.params.spaceId);
-        if (!Number.isInteger(spaceId) || spaceId <= 0) {
-            response.status(400).json({ message: 'spaceId must be a positive integer' });
+        const spaceId = parseSpaceId(request, response);
+        if (spaceId == null) {
             return;
         }
         try {
             const items = await listSpaceMembers(spaceId);
+            response.json({ items });
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    app.get('/api/spaces/:spaceId/transactions', async (request, response, next) => {
+        const spaceId = parseSpaceId(request, response);
+        if (spaceId == null) {
+            return;
+        }
+        try {
+            const items = await listSpaceTransactions(spaceId);
             response.json({ items });
         }
         catch (error) {
@@ -103,6 +123,93 @@ export function createApp() {
             response.status(201).json(item);
         }
         catch (error) {
+            next(error);
+        }
+    });
+    app.post('/api/spaces/join', async (request, response, next) => {
+        const code = typeof request.body?.code === 'string' ? request.body.code.trim() : '';
+        const displayName = typeof request.body?.displayName === 'string' ? request.body.displayName.trim() : '';
+        if (!code) {
+            response.status(400).json({ message: 'code is required' });
+            return;
+        }
+        if (!displayName) {
+            response.status(400).json({ message: 'displayName is required' });
+            return;
+        }
+        try {
+            const item = await joinSpaceAsGuest({ code, displayName });
+            response.status(201).json(item);
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                response.status(400).json({ message: error.message });
+                return;
+            }
+            next(error);
+        }
+    });
+    app.post('/api/spaces/:spaceId/transactions', async (request, response, next) => {
+        const spaceId = parseSpaceId(request, response);
+        if (spaceId == null) {
+            return;
+        }
+        const kind = request.body?.kind;
+        const amount = Number(request.body?.amount ?? 0);
+        const actorType = request.body?.actorType;
+        const actorMemberId = request.body?.actorMemberId == null ? undefined : Number(request.body.actorMemberId);
+        const sourceMemberId = request.body?.sourceMemberId == null ? undefined : Number(request.body.sourceMemberId);
+        const targetMemberId = request.body?.targetMemberId == null ? undefined : Number(request.body.targetMemberId);
+        const note = typeof request.body?.note === 'string' ? request.body.note.trim() : undefined;
+        if (kind !== 'grant' && kind !== 'transfer' && kind !== 'consume') {
+            response.status(400).json({ message: 'kind must be grant, transfer, or consume' });
+            return;
+        }
+        if (!Number.isInteger(amount) || amount <= 0) {
+            response.status(400).json({ message: 'amount must be a positive integer' });
+            return;
+        }
+        if (actorType !== 'member' && actorType !== 'system' && actorType !== 'qr') {
+            response.status(400).json({ message: 'actorType must be member, system, or qr' });
+            return;
+        }
+        if (actorType === 'member' &&
+            (actorMemberId == null || !Number.isInteger(actorMemberId) || actorMemberId <= 0)) {
+            response.status(400).json({ message: 'actorMemberId must be a positive integer' });
+            return;
+        }
+        if (actorType !== 'member' &&
+            actorMemberId != null &&
+            Number.isInteger(actorMemberId) &&
+            actorMemberId > 0) {
+            response.status(400).json({ message: 'actorMemberId must be omitted unless actorType is member' });
+            return;
+        }
+        if (sourceMemberId != null && (!Number.isInteger(sourceMemberId) || sourceMemberId <= 0)) {
+            response.status(400).json({ message: 'sourceMemberId must be a positive integer' });
+            return;
+        }
+        if (targetMemberId != null && (!Number.isInteger(targetMemberId) || targetMemberId <= 0)) {
+            response.status(400).json({ message: 'targetMemberId must be a positive integer' });
+            return;
+        }
+        try {
+            const item = await createSpaceTransaction(spaceId, {
+                kind,
+                amount,
+                actorType,
+                actorMemberId,
+                sourceMemberId,
+                targetMemberId,
+                note
+            });
+            response.status(201).json(item);
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                response.status(400).json({ message: error.message });
+                return;
+            }
             next(error);
         }
     });

@@ -112,6 +112,33 @@ export const openApiSpecification = swaggerJsdoc({
                     }
                 }
             },
+            '/api/spaces/join': {
+                post: {
+                    tags: ['Spaces'],
+                    summary: 'Join a space as a guest by space code',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/JoinSpaceInput' }
+                            }
+                        }
+                    },
+                    responses: {
+                        '201': {
+                            description: 'Guest joined the space',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/JoinSpaceResponse' }
+                                }
+                            }
+                        },
+                        '400': {
+                            description: 'Validation error'
+                        }
+                    }
+                }
+            },
             '/api/spaces/{spaceId}/members': {
                 get: {
                     tags: ['Spaces'],
@@ -132,6 +159,70 @@ export const openApiSpecification = swaggerJsdoc({
                             content: {
                                 'application/json': {
                                     schema: { $ref: '#/components/schemas/SpaceMemberListResponse' }
+                                }
+                            }
+                        },
+                        '400': {
+                            description: 'Validation error'
+                        }
+                    }
+                }
+            },
+            '/api/spaces/{spaceId}/transactions': {
+                get: {
+                    tags: ['Transactions'],
+                    summary: 'List append-only transaction history for a point space',
+                    parameters: [
+                        {
+                            in: 'path',
+                            name: 'spaceId',
+                            required: true,
+                            schema: {
+                                type: 'integer'
+                            }
+                        }
+                    ],
+                    responses: {
+                        '200': {
+                            description: 'Current transaction ledger',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/SpaceTransactionListResponse' }
+                                }
+                            }
+                        },
+                        '400': {
+                            description: 'Validation error'
+                        }
+                    }
+                },
+                post: {
+                    tags: ['Transactions'],
+                    summary: 'Create an append-only transaction',
+                    parameters: [
+                        {
+                            in: 'path',
+                            name: 'spaceId',
+                            required: true,
+                            schema: {
+                                type: 'integer'
+                            }
+                        }
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/CreateSpaceTransactionInput' }
+                            }
+                        }
+                    },
+                    responses: {
+                        '201': {
+                            description: 'Created transaction entry',
+                            content: {
+                                'application/json': {
+                                    schema: { $ref: '#/components/schemas/SpaceTransaction' }
                                 }
                             }
                         },
@@ -237,6 +328,22 @@ export const openApiSpecification = swaggerJsdoc({
                         hostDisplayName: { type: 'string', example: 'Host Player' }
                     }
                 },
+                JoinSpaceInput: {
+                    type: 'object',
+                    required: ['code', 'displayName'],
+                    properties: {
+                        code: { type: 'string', example: 'ROOM01' },
+                        displayName: { type: 'string', example: 'Guest Player' }
+                    }
+                },
+                JoinSpaceResponse: {
+                    type: 'object',
+                    required: ['space', 'member'],
+                    properties: {
+                        space: { $ref: '#/components/schemas/Space' },
+                        member: { $ref: '#/components/schemas/SpaceMember' }
+                    }
+                },
                 SpaceListResponse: {
                     type: 'object',
                     required: ['items'],
@@ -256,13 +363,70 @@ export const openApiSpecification = swaggerJsdoc({
                             items: { $ref: '#/components/schemas/SpaceMember' }
                         }
                     }
+                },
+                SpaceTransaction: {
+                    type: 'object',
+                    required: [
+                        'id',
+                        'spaceId',
+                        'kind',
+                        'actorType',
+                        'actorMemberId',
+                        'actorDisplayName',
+                        'sourceMemberId',
+                        'sourceDisplayName',
+                        'targetMemberId',
+                        'targetDisplayName',
+                        'amount',
+                        'note',
+                        'createdAt'
+                    ],
+                    properties: {
+                        id: { type: 'integer', example: 1 },
+                        spaceId: { type: 'integer', example: 1 },
+                        kind: { type: 'string', enum: ['grant', 'transfer', 'consume'] },
+                        actorType: { type: 'string', enum: ['member', 'system', 'qr'], example: 'member' },
+                        actorMemberId: { type: 'integer', nullable: true, example: 1 },
+                        actorDisplayName: { type: 'string', nullable: true, example: 'Event Owner' },
+                        sourceMemberId: { type: 'integer', nullable: true, example: 2 },
+                        sourceDisplayName: { type: 'string', nullable: true, example: 'BANK' },
+                        targetMemberId: { type: 'integer', nullable: true, example: 3 },
+                        targetDisplayName: { type: 'string', nullable: true, example: 'Guest Alpha' },
+                        amount: { type: 'integer', example: 500 },
+                        note: { type: 'string', nullable: true, example: 'Round reward' },
+                        createdAt: { type: 'string', format: 'date-time' }
+                    }
+                },
+                CreateSpaceTransactionInput: {
+                    type: 'object',
+                    required: ['kind', 'amount', 'actorType'],
+                    properties: {
+                        kind: { type: 'string', enum: ['grant', 'transfer', 'consume'] },
+                        actorType: { type: 'string', enum: ['member', 'system', 'qr'], example: 'member' },
+                        actorMemberId: { type: 'integer', example: 1 },
+                        sourceMemberId: { type: 'integer', example: 2 },
+                        targetMemberId: { type: 'integer', example: 3 },
+                        amount: { type: 'integer', example: 500 },
+                        note: { type: 'string', example: 'Bonus payout' }
+                    }
+                },
+                SpaceTransactionListResponse: {
+                    type: 'object',
+                    required: ['items'],
+                    properties: {
+                        items: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/SpaceTransaction' }
+                        }
+                    }
                 }
             }
         },
         tags: [
             { name: 'System', description: 'Server health checks' },
             { name: 'Tasks', description: 'Legacy demo resource retained during migration' },
-            { name: 'Spaces', description: 'Point space creation and membership overview' }
+            { name: 'Spaces', description: 'Point space creation and membership overview' },
+            { name: 'Transactions', description: 'Append-only point ledger operations' }
         ]
     },
     apis: []

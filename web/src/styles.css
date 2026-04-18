@@ -35,6 +35,28 @@ a {
   padding: 40px 0 64px;
 }
 
+.topbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.nav-link,
+.hero-primary,
+.hero-secondary {
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.nav-link:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .hero-panel {
   position: relative;
   overflow: hidden;
@@ -91,6 +113,25 @@ h1 {
   color: rgba(246, 243, 238, 0.82);
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.hero-primary {
+  border: 0;
+  color: #10151a;
+  background: linear-gradient(135deg, #ffa153, #ffd5a9);
+  font-weight: 700;
+}
+
+.hero-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .hero-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -135,6 +176,11 @@ h1 {
   margin-top: 28px;
 }
 
+.home-grid,
+.join-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .glass-card {
   padding: 28px;
   border-radius: 24px;
@@ -165,6 +211,20 @@ h2 {
   color: rgba(246, 243, 238, 0.68);
 }
 
+.secondary-button {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .muted {
   color: rgba(246, 243, 238, 0.6);
 }
@@ -184,9 +244,58 @@ h2 {
   grid-row: span 2;
 }
 
+.join-card,
+.recent-card {
+  grid-column: span 2;
+}
+
+.compact-list {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.feature-list {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-list li,
+.session-banner {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.session-banner {
+  max-width: 320px;
+  margin-top: 22px;
+}
+
+.session-banner span {
+  display: block;
+  color: rgba(246, 243, 238, 0.58);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.session-banner strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.2rem;
+}
+
+.session-banner p {
+  margin: 4px 0 0;
+  color: rgba(246, 243, 238, 0.72);
+}
+
 .space-list,
 .member-list,
-.note-list {
+.note-list,
+.transaction-list {
   display: grid;
   gap: 14px;
   list-style: none;
@@ -303,7 +412,8 @@ h2 {
 
 .summary-grid article,
 .member-row,
-.note-list li {
+.note-list li,
+.transaction-row {
   padding: 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.04);
@@ -319,6 +429,51 @@ h2 {
 .points-value {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.05rem;
+}
+
+.transaction-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.transaction-row p {
+  margin: 6px 0 0;
+  color: rgba(246, 243, 238, 0.62);
+  font-size: 0.92rem;
+}
+
+.transaction-note {
+  color: rgba(255, 213, 169, 0.84);
+}
+
+.transaction-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.transaction-grant {
+  background: rgba(255, 161, 83, 0.18);
+  color: #ffd2a4;
+}
+
+.transaction-transfer {
+  background: rgba(86, 209, 194, 0.18);
+  color: #bff5ee;
+}
+
+.transaction-consume {
+  background: rgba(121, 140, 255, 0.18);
+  color: #d3dcff;
 }
 
 .space-form {
@@ -390,8 +545,18 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .home-grid,
+  .join-grid {
+    grid-template-columns: 1fr;
+  }
+
   .list-card {
     grid-row: auto;
+  }
+
+  .join-card,
+  .recent-card {
+    grid-column: auto;
   }
 
   .hero-metrics,
@@ -409,7 +574,9 @@ h2 {
   .member-row,
   .section-heading,
   .space-meta,
-  .space-card-header {
+  .space-card-header,
+  .topbar,
+  .hero-actions {
     flex-direction: column;
     align-items: flex-start;
   }
