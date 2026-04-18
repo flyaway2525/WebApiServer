@@ -3,6 +3,40 @@ import path from 'node:path';
 import { createClient } from '@libsql/client';
 import { config } from './config.js';
 let client = null;
+function toBoolean(value) {
+    return Number(value ?? 0) === 1;
+}
+function mapSpaceRow(row) {
+    return {
+        id: Number(row.id),
+        code: String(row.code),
+        name: String(row.name),
+        kind: row.kind,
+        visibility: row.visibility,
+        initialPoints: Number(row.initialPoints),
+        allowGuestJoin: toBoolean(row.allowGuestJoin),
+        rankingMode: row.rankingMode,
+        bankCanMint: toBoolean(row.bankCanMint),
+        createdAt: String(row.createdAt),
+        memberCount: Number(row.memberCount ?? 0),
+        totalPoints: Number(row.totalPoints ?? 0)
+    };
+}
+function mapMemberRow(row) {
+    return {
+        id: Number(row.id),
+        spaceId: Number(row.spaceId),
+        displayName: String(row.displayName),
+        role: row.role,
+        isGuest: toBoolean(row.isGuest),
+        points: Number(row.points),
+        canTransfer: toBoolean(row.canTransfer),
+        createdAt: String(row.createdAt)
+    };
+}
+function generateSpaceCode() {
+    return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 function getClient() {
     if (!client) {
         client = createClient({ url: config.databaseUrl });
@@ -26,6 +60,33 @@ export async function initializeDatabase() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS spaces (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK(kind IN ('owner', 'room')),
+      visibility TEXT NOT NULL CHECK(visibility IN ('private', 'members', 'public')),
+      initial_points INTEGER NOT NULL,
+      allow_guest_join INTEGER NOT NULL DEFAULT 1,
+      ranking_mode TEXT NOT NULL DEFAULT 'manual' CHECK(ranking_mode IN ('manual', 'polling')),
+      bank_can_mint INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS space_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      space_id INTEGER NOT NULL,
+      display_name TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('host', 'bank', 'member')),
+      is_guest INTEGER NOT NULL DEFAULT 1,
+      points INTEGER NOT NULL DEFAULT 0,
+      can_transfer INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+    )
+  `);
     const existing = await client.execute('SELECT COUNT(*) AS count FROM tasks');
     const count = Number(existing.rows[0]?.count ?? 0);
     if (count === 0) {
@@ -44,6 +105,120 @@ export async function initializeDatabase() {
             }
         ], 'write');
     }
+    const existingSpaces = await client.execute('SELECT COUNT(*) AS count FROM spaces');
+    const spaceCount = Number(existingSpaces.rows[0]?.count ?? 0);
+    if (spaceCount === 0) {
+        await seedDefaultSpaces();
+    }
+}
+async function insertSpace(input) {
+    const client = getClient();
+    await client.execute({
+        sql: `
+      INSERT INTO spaces (
+        code,
+        name,
+        kind,
+        visibility,
+        initial_points,
+        allow_guest_join,
+        ranking_mode,
+        bank_can_mint
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+        args: [
+            input.code,
+            input.name,
+            input.kind,
+            input.visibility,
+            input.initialPoints,
+            input.allowGuestJoin ? 1 : 0,
+            'manual',
+            input.bankCanMint ? 1 : 0
+        ]
+    });
+    const inserted = await client.execute('SELECT last_insert_rowid() AS id');
+    return Number(inserted.rows[0]?.id ?? 0);
+}
+async function insertMember(spaceId, member) {
+    const client = getClient();
+    await client.execute({
+        sql: `
+      INSERT INTO space_members (
+        space_id,
+        display_name,
+        role,
+        is_guest,
+        points,
+        can_transfer
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `,
+        args: [
+            spaceId,
+            member.displayName,
+            member.role,
+            member.isGuest ? 1 : 0,
+            member.points,
+            member.canTransfer ? 1 : 0
+        ]
+    });
+}
+async function seedDefaultSpaces() {
+    const ownerSpaceId = await insertSpace({
+        code: 'BANK01',
+        name: 'Weekend Prize Bank',
+        kind: 'owner',
+        visibility: 'members',
+        initialPoints: 10000,
+        allowGuestJoin: true,
+        bankCanMint: true,
+        hostDisplayName: 'Event Owner'
+    });
+    await insertMember(ownerSpaceId, {
+        displayName: 'Event Owner',
+        role: 'host',
+        isGuest: false,
+        points: 0,
+        canTransfer: true
+    });
+    await insertMember(ownerSpaceId, {
+        displayName: 'BANK',
+        role: 'bank',
+        isGuest: false,
+        points: 10000,
+        canTransfer: true
+    });
+    await insertMember(ownerSpaceId, {
+        displayName: 'Guest Alpha',
+        role: 'member',
+        isGuest: true,
+        points: 1200,
+        canTransfer: true
+    });
+    const roomSpaceId = await insertSpace({
+        code: 'ROOM01',
+        name: 'Duel Room',
+        kind: 'room',
+        visibility: 'private',
+        initialPoints: 8000,
+        allowGuestJoin: true,
+        bankCanMint: false,
+        hostDisplayName: 'Host Player'
+    });
+    await insertMember(roomSpaceId, {
+        displayName: 'Host Player',
+        role: 'host',
+        isGuest: false,
+        points: 8000,
+        canTransfer: true
+    });
+    await insertMember(roomSpaceId, {
+        displayName: 'Guest Beta',
+        role: 'member',
+        isGuest: true,
+        points: 8000,
+        canTransfer: true
+    });
 }
 export async function listTasks() {
     const client = getClient();
@@ -69,4 +244,114 @@ export async function createTask(title) {
         status: row.status,
         createdAt: String(row.createdAt)
     };
+}
+export async function listSpaces() {
+    const client = getClient();
+    const result = await client.execute(`
+    SELECT
+      spaces.id,
+      spaces.code,
+      spaces.name,
+      spaces.kind,
+      spaces.visibility,
+      spaces.initial_points AS initialPoints,
+      spaces.allow_guest_join AS allowGuestJoin,
+      spaces.ranking_mode AS rankingMode,
+      spaces.bank_can_mint AS bankCanMint,
+      spaces.created_at AS createdAt,
+      COUNT(space_members.id) AS memberCount,
+      COALESCE(SUM(space_members.points), 0) AS totalPoints
+    FROM spaces
+    LEFT JOIN space_members ON space_members.space_id = spaces.id
+    GROUP BY spaces.id
+    ORDER BY spaces.created_at DESC, spaces.id DESC
+  `);
+    return result.rows.map((row) => mapSpaceRow(row));
+}
+export async function listSpaceMembers(spaceId) {
+    const client = getClient();
+    const result = await client.execute({
+        sql: `
+      SELECT
+        id,
+        space_id AS spaceId,
+        display_name AS displayName,
+        role,
+        is_guest AS isGuest,
+        points,
+        can_transfer AS canTransfer,
+        created_at AS createdAt
+      FROM space_members
+      WHERE space_id = ?
+      ORDER BY
+        CASE role
+          WHEN 'bank' THEN 0
+          WHEN 'host' THEN 1
+          ELSE 2
+        END,
+        points DESC,
+        id ASC
+    `,
+        args: [spaceId]
+    });
+    return result.rows.map((row) => mapMemberRow(row));
+}
+export async function createSpace(input) {
+    const client = getClient();
+    let code = generateSpaceCode();
+    let attempts = 0;
+    while (attempts < 5) {
+        const existing = await client.execute({
+            sql: 'SELECT id FROM spaces WHERE code = ?',
+            args: [code]
+        });
+        if (existing.rows.length === 0) {
+            break;
+        }
+        code = generateSpaceCode();
+        attempts += 1;
+    }
+    const spaceId = await insertSpace({
+        ...input,
+        code
+    });
+    await insertMember(spaceId, {
+        displayName: input.hostDisplayName,
+        role: 'host',
+        isGuest: false,
+        points: input.kind === 'room' ? input.initialPoints : 0,
+        canTransfer: true
+    });
+    if (input.kind === 'owner') {
+        await insertMember(spaceId, {
+            displayName: 'BANK',
+            role: 'bank',
+            isGuest: false,
+            points: input.initialPoints,
+            canTransfer: true
+        });
+    }
+    const created = await client.execute({
+        sql: `
+      SELECT
+        spaces.id,
+        spaces.code,
+        spaces.name,
+        spaces.kind,
+        spaces.visibility,
+        spaces.initial_points AS initialPoints,
+        spaces.allow_guest_join AS allowGuestJoin,
+        spaces.ranking_mode AS rankingMode,
+        spaces.bank_can_mint AS bankCanMint,
+        spaces.created_at AS createdAt,
+        COUNT(space_members.id) AS memberCount,
+        COALESCE(SUM(space_members.points), 0) AS totalPoints
+      FROM spaces
+      LEFT JOIN space_members ON space_members.space_id = spaces.id
+      WHERE spaces.id = ?
+      GROUP BY spaces.id
+    `,
+        args: [spaceId]
+    });
+    return mapSpaceRow(created.rows[0]);
 }
