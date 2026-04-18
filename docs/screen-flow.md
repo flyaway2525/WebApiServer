@@ -4,15 +4,16 @@
 
 This document captures the current MVP screen transitions for the point management app.
 It is written to be readable by both humans and AI tools.
-The app is centered on guest-first participation, with account registration treated as a secondary flow.
+The app is centered on guest-first participation, with account registration treated as a future extension.
 
 ## Current Design Scope
 
 - Primary platform: Web
 - Future client: Unity
 - Primary usage modes: `owner` and `room`
-- Primary user entry points: create a space, join as guest, join via QR
-- Audit and point operations are append-only and visible from the space detail flow
+- Primary user entry points: menu-based create flow, code-based guest join, recent-space reopen
+- QR join accepts pasted or scanned payload text and shared join links; in-browser camera scanning is still pending
+- Point operations and audit history are shown together in the room screen
 
 ## Screen List
 
@@ -21,125 +22,88 @@ The app is centered on guest-first participation, with account registration trea
 Purpose:
 - Entry point for all users
 - Explain the app briefly
-- Offer the three main actions
+- Reserve space for future login or account actions
 
 Main actions:
-- Create space
-- Join as guest
-- Scan QR
-- Reopen recent space
+- Open menu
+- See login placeholder
 
-### S1. Create Space
+### S1. Menu
+
+Purpose:
+- Branch users into the correct next action
+
+Main actions:
+- Go to create space
+- Go to join space
+- Reopen a recent space
+
+### S2. Create Space
 
 Purpose:
 - Create either an `owner` or `room` type space
+- Persist the space when the user confirms creation
 
 Main actions:
 - Choose mode
-- Set initial points
+- Set space name
 - Set visibility
+- Set initial points
 - Allow guest join
 - Allow BANK minting when mode is `owner`
+- Enter host display name
 - Create the space
 
-### S2. Guest Join
+### S3. Join Space
 
 Purpose:
-- Let unregistered users join quickly
+- Let unregistered users join quickly using a shareable code
 
 Main actions:
 - Enter space code
 - Enter display name
-- Re-enter using stored token in the future
-- Continue to space detail
+- Use QR join in the future
+- Continue to room
 
-### S3. Space Detail
+### S4. Room
 
 Purpose:
 - Main operating screen after entry
-- Show current state of a space
+- Show current room state, point operations, and append-only history together
 
 Main actions:
-- View members and current points
-- Open point operation flow
-- Open transaction history
-- Refresh ranking manually
-- Open QR flow
-
-### S4. Point Operation
-
-Purpose:
-- Execute `grant`, `transfer`, or `consume`
-
-Main actions:
-- Choose transaction type
-- Choose actor type: `member`, `system`, `qr`
-- Choose actor member when actor type is `member`
-- Choose source member when needed
-- Choose target member when needed
-- Enter amount and note
-- Submit transaction
-
-### S5. Transaction History
-
-Purpose:
-- Audit append-only ledger entries
-
-Main actions:
-- View latest transactions first
-- Review actor, source, target, amount, note, timestamp
+- View room summary and members
+- Execute `grant`, `transfer`, and `consume`
+- Review transaction history
 - Refresh history manually
-
-### S6. QR Flow
-
-Purpose:
-- Handle QR-based participation and point receipt
-
-Main actions:
-- Show join QR
-- Show reward QR
-- Scan QR
-- Route to guest creation, re-entry, or automatic point claim
+- Return to menu or join another room
 
 ## MVP Transition Diagram
 
 ```mermaid
 flowchart TD
-    S0["S0 Home\nCreate / Guest Join / Scan QR"]
-    S1["S1 Create Space"]
-    S2["S2 Guest Join"]
-    S3["S3 Space Detail"]
-    S4["S4 Point Operation"]
-    S5["S5 Transaction History"]
-    S6["S6 QR Flow"]
+    S0["S0 Home\nIntro / Login placeholder"]
+    S1["S1 Menu\nCreate / Join / Recent spaces"]
+    S2["S2 Create Space"]
+    S3["S3 Join Space"]
+    S4["S4 Room\nMembers / Point operation / History"]
 
-    S0 -->|Create space| S1
-    S0 -->|Join as guest| S2
-    S0 -->|Scan QR| S6
-    S0 -->|Open recent space| S3
+    S0 -->|Open menu| S1
 
-    S1 -->|Create success| S3
-    S1 -->|Cancel| S0
+    S1 -->|Create space| S2
+    S1 -->|Join space| S3
+    S1 -->|Open recent space| S4
+    S1 -->|Back to home| S0
 
-    S2 -->|Join success| S3
-    S2 -->|Cancel| S0
+    S2 -->|Create success| S4
+    S2 -->|Cancel| S1
 
-    S3 -->|Operate points| S4
-    S3 -->|Open history| S5
-    S3 -->|Open QR actions| S6
-    S3 -->|Back to home| S0
+    S3 -->|Join success| S4
+    S3 -->|Cancel| S1
+    S3 -->|QR join planned| S3
 
-    S4 -->|Submit success| S3
-    S4 -->|Review history| S5
-    S4 -->|Cancel| S3
-
-    S5 -->|Back to detail| S3
-    S5 -->|Open point operation| S4
-
-    S6 -->|Join via QR| S2
-    S6 -->|Auto claim by QR| S3
-    S6 -->|Back to detail| S3
-    S6 -->|Back to home| S0
+    S4 -->|Back to menu| S1
+    S4 -->|Join another space| S3
 ```
 
 ## Alternate View By Primary User Flow
@@ -147,50 +111,45 @@ flowchart TD
 ### Flow A: Space owner starts a new event
 
 1. `S0 Home`
-2. `S1 Create Space`
-3. `S3 Space Detail`
-4. `S4 Point Operation`
-5. `S5 Transaction History`
+2. `S1 Menu`
+3. `S2 Create Space`
+4. `S4 Room`
 
 ### Flow B: Guest joins an existing space
 
 1. `S0 Home`
-2. `S2 Guest Join`
-3. `S3 Space Detail`
-4. `S4 Point Operation` if permitted
-5. `S5 Transaction History`
+2. `S1 Menu`
+3. `S3 Join Space`
+4. `S4 Room`
 
-### Flow C: QR-based entry or reward
+### Flow C: Existing room is reopened
 
-1. `S0 Home` or external QR scan
-2. `S6 QR Flow`
-3. `S2 Guest Join` when user identity is needed
-4. `S3 Space Detail`
+1. `S0 Home`
+2. `S1 Menu`
+3. Open recent space
+4. `S4 Room`
 
 ## Screen Responsibilities
 
 | Screen | Primary Responsibility | Secondary Responsibility |
 | --- | --- | --- |
-| S0 Home | Entry and routing | Explain product value |
-| S1 Create Space | Initial configuration | Mode selection |
-| S2 Guest Join | Fast participation | Re-entry |
-| S3 Space Detail | Main operational view | Navigation hub |
-| S4 Point Operation | Execute point changes | Validation before submission |
-| S5 Transaction History | Audit trail | Manual refresh |
-| S6 QR Flow | QR-based join and claim | Bridge to future QR APIs |
+| S0 Home | Entry and explanation | Reserve login entry point |
+| S1 Menu | Action branching | Reopen recent spaces |
+| S2 Create Space | Initial room configuration | Create DB record |
+| S3 Join Space | Fast participation by code | Future QR bridge |
+| S4 Room | Operate points and inspect history | Return navigation |
 
 ## Implementation Notes
 
-- `S3 Space Detail`, `S4 Point Operation`, and `S5 Transaction History` already have partial implementation in the current Web client.
-- `S0 Home` and `S2 Guest Join` are the next natural Web screens to add.
-- `S6 QR Flow` should stay lightweight at first and can initially act as a placeholder screen with clear routing.
-- Registration screens are intentionally excluded from the MVP primary flow.
+- `web/src/App.tsx` now uses `home`, `menu`, `create`, `join`, and `room` screen states.
+- The old dashboard-style create form has been moved out of the room screen into `S2 Create Space`.
+- `S3 Join Space` uses the existing `POST /api/spaces/join` endpoint and can normalize raw space codes or pasted QR payload strings into the `space code` field.
+- `S4 Room` currently keeps point operation and history on the same page for MVP speed.
+- `S4 Room` exposes a share link that can be converted into a QR code outside the app and consumed by `S3 Join Space`.
 
 ## Suggested Next Build Order
 
-1. Add `S0 Home`
-2. Add `S2 Guest Join`
-3. Refine `S3 Space Detail`
-4. Refine `S4 Point Operation`
-5. Refine `S5 Transaction History`
-6. Add `S6 QR Flow`
+1. Add guest re-entry token handling
+2. Split `S4 Room` into tabs only if the single-screen layout becomes too dense
+3. Add login and account linking entry from `S0 Home`
+4. Add in-browser camera scanning on top of the QR payload flow
