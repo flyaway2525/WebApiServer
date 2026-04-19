@@ -12,6 +12,9 @@ export function mapSpaceRow(row) {
         allowGuestJoin: toBoolean(row.allowGuestJoin),
         rankingMode: row.rankingMode,
         bankCanMint: toBoolean(row.bankCanMint),
+        state: row.state,
+        closedAt: row.closedAt == null ? null : String(row.closedAt),
+        closedByMemberId: row.closedByMemberId == null ? null : Number(row.closedByMemberId),
         createdAt: String(row.createdAt),
         memberCount: Number(row.memberCount ?? 0),
         totalPoints: Number(row.totalPoints ?? 0)
@@ -43,6 +46,27 @@ export function mapTransactionRow(row) {
         targetDisplayName: row.targetDisplayName == null ? null : String(row.targetDisplayName),
         amount: Number(row.amount),
         note: row.note == null ? null : String(row.note),
+        createdAt: String(row.createdAt)
+    };
+}
+export function mapTransactionRequestRow(row) {
+    return {
+        id: Number(row.id),
+        spaceId: Number(row.spaceId),
+        kind: row.kind,
+        status: row.status,
+        requesterMemberId: Number(row.requesterMemberId),
+        requesterDisplayName: row.requesterDisplayName == null ? null : String(row.requesterDisplayName),
+        sourceMemberId: row.sourceMemberId == null ? null : Number(row.sourceMemberId),
+        sourceDisplayName: row.sourceDisplayName == null ? null : String(row.sourceDisplayName),
+        targetMemberId: row.targetMemberId == null ? null : Number(row.targetMemberId),
+        targetDisplayName: row.targetDisplayName == null ? null : String(row.targetDisplayName),
+        amount: Number(row.amount),
+        note: row.note == null ? null : String(row.note),
+        approvedTransactionId: row.approvedTransactionId == null ? null : Number(row.approvedTransactionId),
+        resolvedAt: row.resolvedAt == null ? null : String(row.resolvedAt),
+        resolvedByMemberId: row.resolvedByMemberId == null ? null : Number(row.resolvedByMemberId),
+        resolvedByDisplayName: row.resolvedByDisplayName == null ? null : String(row.resolvedByDisplayName),
         createdAt: String(row.createdAt)
     };
 }

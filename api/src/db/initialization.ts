@@ -136,6 +136,9 @@ export async function initializeDatabase() {
       allow_guest_join INTEGER NOT NULL DEFAULT 1,
       ranking_mode TEXT NOT NULL DEFAULT 'manual' CHECK(ranking_mode IN ('manual', 'polling')),
       bank_can_mint INTEGER NOT NULL DEFAULT 0,
+      state TEXT NOT NULL DEFAULT 'active' CHECK(state IN ('active', 'closed', 'archived')),
+      closed_at TEXT,
+      closed_by_member_id INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -149,6 +152,8 @@ export async function initializeDatabase() {
       is_guest INTEGER NOT NULL DEFAULT 1,
       points INTEGER NOT NULL DEFAULT 0,
       can_transfer INTEGER NOT NULL DEFAULT 1,
+      session_token TEXT,
+      session_created_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
     )
@@ -172,6 +177,65 @@ export async function initializeDatabase() {
       FOREIGN KEY (target_member_id) REFERENCES space_members(id) ON DELETE SET NULL
     )
   `);
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS space_transaction_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      space_id INTEGER NOT NULL,
+      kind TEXT NOT NULL CHECK(kind IN ('grant', 'transfer', 'consume')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+      requester_member_id INTEGER NOT NULL,
+      source_member_id INTEGER,
+      target_member_id INTEGER,
+      amount INTEGER NOT NULL CHECK(amount > 0),
+      note TEXT,
+      approved_transaction_id INTEGER,
+      resolved_at TEXT,
+      resolved_by_member_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+      FOREIGN KEY (requester_member_id) REFERENCES space_members(id) ON DELETE CASCADE,
+      FOREIGN KEY (source_member_id) REFERENCES space_members(id) ON DELETE SET NULL,
+      FOREIGN KEY (target_member_id) REFERENCES space_members(id) ON DELETE SET NULL,
+      FOREIGN KEY (approved_transaction_id) REFERENCES space_transactions(id) ON DELETE SET NULL,
+      FOREIGN KEY (resolved_by_member_id) REFERENCES space_members(id) ON DELETE SET NULL
+    )
+  `);
+
+  const spaceColumns = await client.execute('PRAGMA table_info(spaces)');
+  const hasState = spaceColumns.rows.some((row: Record<string, unknown>) => String(row.name) === 'state');
+  const hasClosedAt = spaceColumns.rows.some((row: Record<string, unknown>) => String(row.name) === 'closed_at');
+  const hasClosedByMemberId = spaceColumns.rows.some(
+    (row: Record<string, unknown>) => String(row.name) === 'closed_by_member_id'
+  );
+
+  if (!hasState) {
+    await client.execute("ALTER TABLE spaces ADD COLUMN state TEXT NOT NULL DEFAULT 'active'");
+  }
+
+  if (!hasClosedAt) {
+    await client.execute('ALTER TABLE spaces ADD COLUMN closed_at TEXT');
+  }
+
+  if (!hasClosedByMemberId) {
+    await client.execute('ALTER TABLE spaces ADD COLUMN closed_by_member_id INTEGER');
+  }
+
+  const memberColumns = await client.execute('PRAGMA table_info(space_members)');
+  const hasSessionToken = memberColumns.rows.some(
+    (row: Record<string, unknown>) => String(row.name) === 'session_token'
+  );
+  const hasSessionCreatedAt = memberColumns.rows.some(
+    (row: Record<string, unknown>) => String(row.name) === 'session_created_at'
+  );
+
+  if (!hasSessionToken) {
+    await client.execute('ALTER TABLE space_members ADD COLUMN session_token TEXT');
+  }
+
+  if (!hasSessionCreatedAt) {
+    await client.execute('ALTER TABLE space_members ADD COLUMN session_created_at TEXT');
+  }
 
   const transactionColumns = await client.execute('PRAGMA table_info(space_transactions)');
   const hasActorMemberId = transactionColumns.rows.some(

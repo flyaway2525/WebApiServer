@@ -9,6 +9,8 @@ import { useTransactionState } from './useTransactionState';
 type UseTransactionsOptions = {
   members: SpaceMember[];
   selectedSpace: Space | null;
+  authenticatedMember: SpaceMember | null;
+  memberSession: import('../types').SpaceSession | null;
 };
 
 export type TransactionsController = {
@@ -36,6 +38,8 @@ export function useTransactions(options: UseTransactionsOptions): TransactionsCo
 
   const submitTransactionAction = useSubmitTransactionAction({
     transactionForm: state.transactionForm,
+    authenticatedMember: options.authenticatedMember,
+    memberSession: options.memberSession,
     setSubmittingTransaction: state.setSubmittingTransaction,
     setTransactionError: state.setTransactionError,
     setTransactionForm: state.setTransactionForm

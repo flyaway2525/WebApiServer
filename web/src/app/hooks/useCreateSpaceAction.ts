@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
 import { createSpaceRequest } from '../api';
-import { Space, SpaceForm } from '../types';
+import { CreateSpaceResponse, SpaceForm } from '../types';
 
 type UseCreateSpaceActionOptions = {
   spaceForm: SpaceForm;
-  onCreated: (created: Space) => Promise<void>;
+  onCreated: (created: CreateSpaceResponse) => Promise<void>;
 };
 
 export function useCreateSpaceAction(options: UseCreateSpaceActionOptions) {

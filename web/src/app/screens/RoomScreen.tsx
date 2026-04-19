@@ -22,9 +22,9 @@ export function RoomScreen(props: RoomScreenProps) {
         </div>
         {state.guestSessionMember ? (
           <div className="session-banner">
-            <span>Current guest</span>
+            <span>Current session</span>
             <strong>{state.guestSessionMember.displayName}</strong>
-            <p>ID {state.guestSessionMember.id} で参加中</p>
+            <p>ID {state.guestSessionMember.id} として操作中</p>
           </div>
         ) : null}
       </section>

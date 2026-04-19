@@ -21,6 +21,41 @@ export function parseSpaceId(value) {
     }
     return { ok: true, value: spaceId };
 }
+export function parseMemberId(value) {
+    const memberId = Number(value);
+    if (!Number.isInteger(memberId) || memberId <= 0) {
+        return { ok: false, message: 'memberId must be a positive integer' };
+    }
+    return { ok: true, value: memberId };
+}
+export function parseRequestId(value) {
+    const requestId = Number(value);
+    if (!Number.isInteger(requestId) || requestId <= 0) {
+        return { ok: false, message: 'requestId must be a positive integer' };
+    }
+    return { ok: true, value: requestId };
+}
+export function parseMemberSessionHeaders(headers) {
+    const memberIdResult = parseMemberId(headers['x-space-member-id']);
+    if (!memberIdResult.ok) {
+        return memberIdResult;
+    }
+    const tokenValue = typeof headers['x-space-session-token'] === 'string'
+        ? headers['x-space-session-token'].trim()
+        : Array.isArray(headers['x-space-session-token'])
+            ? String(headers['x-space-session-token'][0] ?? '').trim()
+            : '';
+    if (!tokenValue) {
+        return { ok: false, message: 'x-space-session-token header is required' };
+    }
+    return {
+        ok: true,
+        value: {
+            memberId: memberIdResult.value,
+            token: tokenValue
+        }
+    };
+}
 export function parseTaskTitle(body) {
     const title = typeof body?.title === 'string'
         ? body.title.trim()
@@ -122,6 +157,46 @@ export function parseCreateSpaceTransactionInput(body) {
             amount,
             actorType: actorType,
             actorMemberId,
+            sourceMemberId,
+            targetMemberId,
+            note
+        }
+    };
+}
+export function parseUpdateSpaceStateInput(body) {
+    const state = body?.state;
+    if (state !== 'active' && state !== 'closed' && state !== 'archived') {
+        return { ok: false, message: 'state must be active, closed, or archived' };
+    }
+    return {
+        ok: true,
+        value: { state }
+    };
+}
+export function parseCreateSpaceTransactionRequestInput(body) {
+    const requestBody = (body ?? {});
+    const kind = requestBody.kind;
+    const amount = Number(requestBody.amount ?? 0);
+    const sourceMemberId = parseOptionalPositiveInteger(requestBody.sourceMemberId);
+    const targetMemberId = parseOptionalPositiveInteger(requestBody.targetMemberId);
+    const note = typeof requestBody.note === 'string' ? requestBody.note.trim() : undefined;
+    if (kind !== 'grant' && kind !== 'transfer' && kind !== 'consume') {
+        return { ok: false, message: 'kind must be grant, transfer, or consume' };
+    }
+    if (!Number.isInteger(amount) || amount <= 0) {
+        return { ok: false, message: 'amount must be a positive integer' };
+    }
+    if (requestBody.sourceMemberId != null && sourceMemberId == null) {
+        return { ok: false, message: 'sourceMemberId must be a positive integer' };
+    }
+    if (requestBody.targetMemberId != null && targetMemberId == null) {
+        return { ok: false, message: 'targetMemberId must be a positive integer' };
+    }
+    return {
+        ok: true,
+        value: {
+            kind: kind,
+            amount,
             sourceMemberId,
             targetMemberId,
             note

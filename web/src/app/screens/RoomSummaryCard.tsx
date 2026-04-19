@@ -27,6 +27,7 @@ export function RoomSummaryCard(props: RoomSummaryCardProps) {
             {props.selectedSpace.kind} · {props.selectedSpace.memberCount} members ·{' '}
             {props.selectedSpace.totalPoints.toLocaleString('ja-JP')} pts
           </p>
+          <p className="muted">状態: {props.selectedSpace.state}</p>
         </div>
         <div className="summary-grid">
           <article>

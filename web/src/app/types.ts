@@ -14,6 +14,9 @@ export type Space = {
   allowGuestJoin: boolean;
   rankingMode: 'manual' | 'polling';
   bankCanMint: boolean;
+  state: 'active' | 'closed' | 'archived';
+  closedAt: string | null;
+  closedByMemberId: number | null;
   createdAt: string;
   memberCount: number;
   totalPoints: number;
@@ -75,6 +78,20 @@ export type TransactionForm = {
 export type JoinResponse = {
   space: Space;
   member: SpaceMember;
+  session: SpaceSession;
+};
+
+export type CreateSpaceResponse = {
+  space: Space;
+  member: SpaceMember;
+  session: SpaceSession;
+};
+
+export type SpaceSession = {
+  memberId: number;
+  spaceId: number;
+  token: string;
+  issuedAt: string;
 };
 
 export type InlineNotice = {

@@ -1,10 +1,14 @@
+import { randomUUID } from 'node:crypto';
+
 import { getClient } from './client.js';
-import { mapMemberRow, mapSpaceRow, mapTransactionRow } from './mappers.js';
+import { mapMemberRow, mapSpaceRow, mapTransactionRequestRow, mapTransactionRow } from './mappers.js';
 import {
   CreateSpaceInput,
   SpaceMemberRecord,
   SpaceRecord,
+  SpaceSessionRecord,
   SpaceTransactionRecord,
+  SpaceTransactionRequestRecord,
   TransactionActorType,
   TransactionKind
 } from './types.js';
@@ -30,8 +34,11 @@ export async function insertSpace(input: CreateSpaceInput & { code: string }) {
         initial_points,
         allow_guest_join,
         ranking_mode,
-        bank_can_mint
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        bank_can_mint,
+        state,
+        closed_at,
+        closed_by_member_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     args: [
       input.code,
@@ -41,7 +48,10 @@ export async function insertSpace(input: CreateSpaceInput & { code: string }) {
       input.initialPoints,
       input.allowGuestJoin ? 1 : 0,
       'manual',
-      input.bankCanMint ? 1 : 0
+      input.bankCanMint ? 1 : 0,
+      'active',
+      null,
+      null
     ]
   });
 
@@ -63,8 +73,10 @@ export async function insertMember(
         role,
         is_guest,
         points,
-        can_transfer
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        can_transfer,
+        session_token,
+        session_created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
     args: [
       spaceId,
@@ -72,7 +84,9 @@ export async function insertMember(
       member.role,
       member.isGuest ? 1 : 0,
       member.points,
-      member.canTransfer ? 1 : 0
+        member.canTransfer ? 1 : 0,
+        null,
+        null
     ]
   });
 
@@ -137,6 +151,9 @@ export async function getSpaceById(spaceId: number) {
         allow_guest_join AS allowGuestJoin,
         ranking_mode AS rankingMode,
         bank_can_mint AS bankCanMint,
+        state,
+        closed_at AS closedAt,
+        closed_by_member_id AS closedByMemberId,
         created_at AS createdAt,
         0 AS memberCount,
         0 AS totalPoints
@@ -167,6 +184,9 @@ export async function getAggregatedSpaceById(spaceId: number) {
         spaces.allow_guest_join AS allowGuestJoin,
         spaces.ranking_mode AS rankingMode,
         spaces.bank_can_mint AS bankCanMint,
+        spaces.state,
+        spaces.closed_at AS closedAt,
+        spaces.closed_by_member_id AS closedByMemberId,
         spaces.created_at AS createdAt,
         COUNT(space_members.id) AS memberCount,
         COALESCE(SUM(space_members.points), 0) AS totalPoints
@@ -199,6 +219,9 @@ export async function getSpaceByCode(code: string) {
         allow_guest_join AS allowGuestJoin,
         ranking_mode AS rankingMode,
         bank_can_mint AS bankCanMint,
+        state,
+        closed_at AS closedAt,
+        closed_by_member_id AS closedByMemberId,
         created_at AS createdAt,
         0 AS memberCount,
         0 AS totalPoints
@@ -241,6 +264,86 @@ export async function getSpaceMemberById(memberId: number) {
   return mapMemberRow(result.rows[0] as Record<string, unknown>);
 }
 
+export async function issueMemberSession(memberId: number): Promise<SpaceSessionRecord> {
+  const client = getClient();
+  const token = randomUUID();
+
+  await client.execute({
+    sql: `
+      UPDATE space_members
+      SET session_token = ?, session_created_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+    args: [token, memberId]
+  });
+
+  const result = await client.execute({
+    sql: `
+      SELECT
+        id AS memberId,
+        space_id AS spaceId,
+        session_token AS token,
+        session_created_at AS issuedAt
+      FROM space_members
+      WHERE id = ?
+    `,
+    args: [memberId]
+  });
+
+  if (result.rows.length === 0) {
+    throw new Error('Failed to issue member session');
+  }
+
+  const row = result.rows[0] as Record<string, unknown>;
+  return {
+    memberId: Number(row.memberId),
+    spaceId: Number(row.spaceId),
+    token: String(row.token),
+    issuedAt: String(row.issuedAt)
+  };
+}
+
+export async function getAuthenticatedMember(spaceId: number, memberId: number, token: string) {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `
+      SELECT
+        id,
+        space_id AS spaceId,
+        display_name AS displayName,
+        role,
+        is_guest AS isGuest,
+        points,
+        can_transfer AS canTransfer,
+        created_at AS createdAt,
+        session_token AS sessionToken,
+        session_created_at AS sessionIssuedAt
+      FROM space_members
+      WHERE id = ? AND space_id = ?
+    `,
+    args: [memberId, spaceId]
+  });
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0] as Record<string, unknown>;
+  if (String(row.sessionToken ?? '') !== token) {
+    return null;
+  }
+
+  return {
+    member: mapMemberRow(row),
+    session: {
+      memberId: Number(row.id),
+      spaceId: Number(row.spaceId),
+      token,
+      issuedAt: String(row.sessionIssuedAt ?? '')
+    }
+  };
+}
+
 export async function getTransactionById(transactionId: number) {
   const client = getClient();
   const result = await client.execute({
@@ -273,4 +376,178 @@ export async function getTransactionById(transactionId: number) {
   }
 
   return mapTransactionRow(result.rows[0] as Record<string, unknown>);
+}
+
+export async function insertTransactionRequestEntry(
+  spaceId: number,
+  request: {
+    kind: TransactionKind;
+    requesterMemberId: number;
+    sourceMemberId?: number;
+    targetMemberId?: number;
+    amount: number;
+    note?: string;
+  }
+) {
+  const client = getClient();
+
+  await client.execute({
+    sql: `
+      INSERT INTO space_transaction_requests (
+        space_id,
+        kind,
+        status,
+        requester_member_id,
+        source_member_id,
+        target_member_id,
+        amount,
+        note
+      ) VALUES (?, ?, 'pending', ?, ?, ?, ?, ?)
+    `,
+    args: [
+      spaceId,
+      request.kind,
+      request.requesterMemberId,
+      request.sourceMemberId ?? null,
+      request.targetMemberId ?? null,
+      request.amount,
+      request.note ?? null
+    ]
+  });
+
+  const inserted = await client.execute('SELECT last_insert_rowid() AS id');
+  return Number(inserted.rows[0]?.id ?? 0);
+}
+
+export async function getTransactionRequestById(requestId: number) {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `
+      SELECT
+        requests.id,
+        requests.space_id AS spaceId,
+        requests.kind,
+        requests.status,
+        requests.requester_member_id AS requesterMemberId,
+        requester.display_name AS requesterDisplayName,
+        requests.source_member_id AS sourceMemberId,
+        source.display_name AS sourceDisplayName,
+        requests.target_member_id AS targetMemberId,
+        target.display_name AS targetDisplayName,
+        requests.amount,
+        requests.note,
+        requests.approved_transaction_id AS approvedTransactionId,
+        requests.resolved_at AS resolvedAt,
+        requests.resolved_by_member_id AS resolvedByMemberId,
+        resolver.display_name AS resolvedByDisplayName,
+        requests.created_at AS createdAt
+      FROM space_transaction_requests AS requests
+      LEFT JOIN space_members AS requester ON requester.id = requests.requester_member_id
+      LEFT JOIN space_members AS source ON source.id = requests.source_member_id
+      LEFT JOIN space_members AS target ON target.id = requests.target_member_id
+      LEFT JOIN space_members AS resolver ON resolver.id = requests.resolved_by_member_id
+      WHERE requests.id = ?
+    `,
+    args: [requestId]
+  });
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapTransactionRequestRow(result.rows[0] as Record<string, unknown>);
+}
+
+export async function listTransactionRequestsBySpaceId(spaceId: number): Promise<SpaceTransactionRequestRecord[]> {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `
+      SELECT
+        requests.id,
+        requests.space_id AS spaceId,
+        requests.kind,
+        requests.status,
+        requests.requester_member_id AS requesterMemberId,
+        requester.display_name AS requesterDisplayName,
+        requests.source_member_id AS sourceMemberId,
+        source.display_name AS sourceDisplayName,
+        requests.target_member_id AS targetMemberId,
+        target.display_name AS targetDisplayName,
+        requests.amount,
+        requests.note,
+        requests.approved_transaction_id AS approvedTransactionId,
+        requests.resolved_at AS resolvedAt,
+        requests.resolved_by_member_id AS resolvedByMemberId,
+        resolver.display_name AS resolvedByDisplayName,
+        requests.created_at AS createdAt
+      FROM space_transaction_requests AS requests
+      LEFT JOIN space_members AS requester ON requester.id = requests.requester_member_id
+      LEFT JOIN space_members AS source ON source.id = requests.source_member_id
+      LEFT JOIN space_members AS target ON target.id = requests.target_member_id
+      LEFT JOIN space_members AS resolver ON resolver.id = requests.resolved_by_member_id
+      WHERE requests.space_id = ?
+      ORDER BY requests.created_at DESC, requests.id DESC
+    `,
+    args: [spaceId]
+  });
+
+  return result.rows.map((row: Record<string, unknown>) => mapTransactionRequestRow(row));
+}
+
+export async function resolveTransactionRequest(
+  requestId: number,
+  resolution: {
+    status: 'approved' | 'rejected';
+    resolvedByMemberId: number;
+    approvedTransactionId?: number;
+  }
+) {
+  const client = getClient();
+  await client.execute({
+    sql: `
+      UPDATE space_transaction_requests
+      SET
+        status = ?,
+        resolved_by_member_id = ?,
+        resolved_at = CURRENT_TIMESTAMP,
+        approved_transaction_id = ?
+      WHERE id = ?
+    `,
+    args: [
+      resolution.status,
+      resolution.resolvedByMemberId,
+      resolution.approvedTransactionId ?? null,
+      requestId
+    ]
+  });
+}
+
+export async function updateSpaceState(
+  spaceId: number,
+  update: { state: 'active' | 'closed' | 'archived'; closedByMemberId?: number | null }
+) {
+  const client = getClient();
+  const closedByMemberId = update.state === 'active' ? null : update.closedByMemberId ?? null;
+  const closedAt = update.state === 'active' ? null : 'CURRENT_TIMESTAMP';
+
+  if (closedAt === null) {
+    await client.execute({
+      sql: `
+        UPDATE spaces
+        SET state = ?, closed_at = NULL, closed_by_member_id = NULL
+        WHERE id = ?
+      `,
+      args: [update.state, spaceId]
+    });
+    return;
+  }
+
+  await client.execute({
+    sql: `
+      UPDATE spaces
+      SET state = ?, closed_at = CURRENT_TIMESTAMP, closed_by_member_id = ?
+      WHERE id = ?
+    `,
+    args: [update.state, closedByMemberId, spaceId]
+  });
 }

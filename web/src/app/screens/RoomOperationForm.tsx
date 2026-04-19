@@ -13,16 +13,20 @@ type RoomOperationFormProps = {
 };
 
 export function RoomOperationForm(props: RoomOperationFormProps) {
+  const isSpaceActive = props.selectedSpace.state === 'active';
+
   return (
     <article className="glass-card accent-card transaction-card room-operation-card">
       <h2>ポイント操作</h2>
       <p>配布、譲渡、使用を取引として追加します。</p>
+      {!isSpaceActive ? <p className="error-banner">このスペースは {props.selectedSpace.state} 状態のため、新しい取引は追加できません。</p> : null}
       {props.transactionError ? <p className="error-banner">{props.transactionError}</p> : null}
       <form onSubmit={props.onSubmitTransaction} className="space-form">
         <div className="inline-fields">
           <label>
             種別
             <select
+              disabled={!isSpaceActive}
               value={props.transactionForm.kind}
               onChange={(event) => props.onTransactionFieldChange('kind', event.target.value as TransactionKind)}
             >
@@ -34,6 +38,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
           <label>
             金額
             <input
+              disabled={!isSpaceActive}
               type="number"
               min="1"
               value={props.transactionForm.amount}
@@ -44,6 +49,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
         <label>
           実行種別
           <select
+            disabled={!isSpaceActive}
             value={props.transactionForm.actorType}
             onChange={(event) =>
               props.onTransactionFieldChange('actorType', event.target.value as TransactionActorType)
@@ -58,6 +64,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
           <label>
             実行者
             <select
+              disabled={!isSpaceActive}
               value={props.transactionForm.actorMemberId}
               onChange={(event) => props.onTransactionFieldChange('actorMemberId', event.target.value)}
             >
@@ -73,6 +80,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
         <label>
           {props.transactionForm.kind === 'consume' ? '使用元' : '操作元'}
           <select
+            disabled={!isSpaceActive}
             value={props.transactionForm.sourceMemberId}
             onChange={(event) => props.onTransactionFieldChange('sourceMemberId', event.target.value)}
           >
@@ -91,6 +99,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
           <label>
             {props.transactionForm.kind === 'grant' ? '配布先' : '譲渡先'}
             <select
+              disabled={!isSpaceActive}
               value={props.transactionForm.targetMemberId}
               onChange={(event) => props.onTransactionFieldChange('targetMemberId', event.target.value)}
             >
@@ -106,12 +115,13 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
         <label>
           メモ
           <input
+            disabled={!isSpaceActive}
             value={props.transactionForm.note}
             onChange={(event) => props.onTransactionFieldChange('note', event.target.value)}
             placeholder="例: Round 1 reward"
           />
         </label>
-        <button type="submit" disabled={props.submittingTransaction}>
+        <button type="submit" disabled={props.submittingTransaction || !isSpaceActive}>
           {props.submittingTransaction ? '登録中...' : '取引を記録する'}
         </button>
       </form>

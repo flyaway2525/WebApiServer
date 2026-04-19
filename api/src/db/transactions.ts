@@ -1,7 +1,8 @@
 import { getClient } from './client.js';
+import { assertTransactionPermission, validateReferencedMembers } from './authorization.js';
 import { mapTransactionRow } from './mappers.js';
 import { getSpaceById, getSpaceMemberById, getTransactionById } from './lookups.js';
-import { CreateSpaceTransactionInput, SpaceTransactionRecord } from './types.js';
+import { CreateSpaceTransactionInput, SpaceMemberRecord, SpaceTransactionRecord } from './types.js';
 
 export async function listSpaceTransactions(spaceId: number): Promise<SpaceTransactionRecord[]> {
   const client = getClient();
@@ -36,7 +37,8 @@ export async function listSpaceTransactions(spaceId: number): Promise<SpaceTrans
 
 export async function createSpaceTransaction(
   spaceId: number,
-  input: CreateSpaceTransactionInput
+  input: CreateSpaceTransactionInput,
+  sessionMember?: SpaceMemberRecord
 ): Promise<SpaceTransactionRecord> {
   const client = getClient();
   const space = await getSpaceById(spaceId);
@@ -49,11 +51,12 @@ export async function createSpaceTransaction(
     throw new Error('amount must be a positive integer');
   }
 
+  if (space.state !== 'active') {
+    throw new Error('Space is not active');
+  }
+
   const note = input.note?.trim() || undefined;
-  const sourceMember =
-    input.sourceMemberId == null ? null : await getSpaceMemberById(input.sourceMemberId);
-  const targetMember =
-    input.targetMemberId == null ? null : await getSpaceMemberById(input.targetMemberId);
+  const { sourceMember, targetMember } = await validateReferencedMembers(spaceId, input);
   const actorMember =
     input.actorMemberId == null ? null : await getSpaceMemberById(input.actorMemberId);
   const actorType = input.actorType ?? 'member';
@@ -74,12 +77,12 @@ export async function createSpaceTransaction(
     throw new Error('actorMemberId must be omitted unless actorType is member');
   }
 
-  if (sourceMember && sourceMember.spaceId !== spaceId) {
-    throw new Error('sourceMemberId must belong to the selected space');
-  }
-
-  if (targetMember && targetMember.spaceId !== spaceId) {
-    throw new Error('targetMemberId must belong to the selected space');
+  if (sessionMember) {
+    assertTransactionPermission(sessionMember, space, {
+      ...input,
+      actorType,
+      actorMemberId: actorMember?.id
+    });
   }
 
   if (input.kind === 'grant') {

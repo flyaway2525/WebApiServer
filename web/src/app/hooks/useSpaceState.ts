@@ -7,6 +7,7 @@ import {
   SpaceForm,
   SpaceKind,
   SpaceMember,
+  SpaceSession,
   initialJoinForm,
   initialSpaceForm
 } from '../types';
@@ -16,6 +17,7 @@ export function useSpaceState() {
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
   const [guestSessionMember, setGuestSessionMember] = useState<SpaceMember | null>(null);
+  const [memberSession, setMemberSession] = useState<SpaceSession | null>(null);
   const [spaceForm, setSpaceForm] = useState(initialSpaceForm);
   const [joinForm, setJoinForm] = useState(initialJoinForm);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
@@ -55,6 +57,8 @@ export function useSpaceState() {
     setSelectedSpaceId,
     guestSessionMember,
     setGuestSessionMember,
+    memberSession,
+    setMemberSession,
     recentSpaces,
     shareJoinLink,
     spaceForm,

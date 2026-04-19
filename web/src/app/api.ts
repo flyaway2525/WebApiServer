@@ -1,8 +1,10 @@
 import {
+  CreateSpaceResponse,
   JoinResponse,
   Space,
   SpaceForm,
   SpaceMember,
+  SpaceSession,
   SpaceTransaction,
   apiBaseUrl
 } from './types';
@@ -32,7 +34,7 @@ export async function fetchSpaceTransactions(spaceId: number) {
 }
 
 export async function createSpaceRequest(spaceForm: SpaceForm) {
-  const response = await fetch(`${apiBaseUrl}/api/spaces`, {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -46,7 +48,7 @@ export async function createSpaceRequest(spaceForm: SpaceForm) {
     })
   });
 
-  return parseJsonResponse<Space>(response, 'スペースの作成に失敗しました。');
+  return parseJsonResponse<CreateSpaceResponse>(response, 'スペースの作成に失敗しました。');
 }
 
 export async function joinSpaceRequest(code: string, displayName: string) {
@@ -63,6 +65,28 @@ export async function createSpaceTransactionRequest(spaceId: number, payload: Re
   const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transactions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  return parseJsonResponse<SpaceTransaction>(response, '取引の作成に失敗しました。');
+}
+
+function createSessionHeaders(session: SpaceSession) {
+  return {
+    'Content-Type': 'application/json',
+    'x-space-member-id': String(session.memberId),
+    'x-space-session-token': session.token
+  };
+}
+
+export async function createAuthorizedSpaceTransactionRequest(
+  spaceId: number,
+  payload: Record<string, unknown>,
+  session: SpaceSession
+) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transactions`, {
+    method: 'POST',
+    headers: createSessionHeaders(session),
     body: JSON.stringify(payload)
   });
 

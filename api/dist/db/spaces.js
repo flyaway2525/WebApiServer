@@ -1,6 +1,7 @@
 import { getClient } from './client.js';
 import { mapMemberRow, mapSpaceRow } from './mappers.js';
-import { generateSpaceCode, getAggregatedSpaceById, getSpaceByCode, getSpaceMemberById, insertMember, insertSpace, insertTransactionEntry } from './lookups.js';
+import { generateSpaceCode, getAggregatedSpaceById, getAuthenticatedMember, getSpaceByCode, getSpaceMemberById, issueMemberSession, insertMember, insertSpace, updateSpaceState, insertTransactionEntry } from './lookups.js';
+import { canUpdateSpaceState } from './authorization.js';
 export async function listSpaces() {
     const client = getClient();
     const result = await client.execute(`
@@ -14,6 +15,9 @@ export async function listSpaces() {
       spaces.allow_guest_join AS allowGuestJoin,
       spaces.ranking_mode AS rankingMode,
       spaces.bank_can_mint AS bankCanMint,
+      spaces.state,
+      spaces.closed_at AS closedAt,
+      spaces.closed_by_member_id AS closedByMemberId,
       spaces.created_at AS createdAt,
       COUNT(space_members.id) AS memberCount,
       COALESCE(SUM(space_members.points), 0) AS totalPoints
@@ -109,6 +113,22 @@ export async function createSpace(input) {
     }
     return created;
 }
+export async function createSpaceWithSession(input) {
+    const space = await createSpace(input);
+    const members = await listSpaceMembers(space.id);
+    const hostMember = members.find((member) => member.role === 'host' && member.displayName === input.hostDisplayName)
+        ?? members.find((member) => member.role === 'host')
+        ?? null;
+    if (!hostMember) {
+        throw new Error('Failed to load host member');
+    }
+    const session = await issueMemberSession(hostMember.id);
+    return {
+        space,
+        member: hostMember,
+        session
+    };
+}
 export async function joinSpaceAsGuest(input) {
     const space = await getSpaceByCode(input.code);
     if (!space) {
@@ -140,11 +160,36 @@ export async function joinSpaceAsGuest(input) {
     }
     const member = await getSpaceMemberById(memberId);
     const joinedSpace = await getAggregatedSpaceById(space.id);
+    const session = await issueMemberSession(memberId);
     if (!member || !joinedSpace) {
         throw new Error('Failed to join space');
     }
     return {
         space: joinedSpace,
-        member
+        member,
+        session
     };
+}
+export async function authenticateMemberForSpace(spaceId, memberId, token) {
+    const authenticated = await getAuthenticatedMember(spaceId, memberId, token);
+    if (!authenticated) {
+        throw new Error('Invalid member session');
+    }
+    return authenticated.member;
+}
+export async function changeSpaceState(spaceId, state, sessionMember) {
+    const space = await getAggregatedSpaceById(spaceId);
+    if (!space) {
+        throw new Error('Space not found');
+    }
+    canUpdateSpaceState(sessionMember, space, state);
+    await updateSpaceState(spaceId, {
+        state,
+        closedByMemberId: state === 'active' ? null : sessionMember.id
+    });
+    const updated = await getAggregatedSpaceById(spaceId);
+    if (!updated) {
+        throw new Error('Failed to load updated space');
+    }
+    return updated;
 }

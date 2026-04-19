@@ -16,7 +16,9 @@ export function usePointManagerApp(): PointManagerAppViewModel {
   const spaces = useSpaces(setScreen);
   const transactions = useTransactions({
     members: spaces.members,
-    selectedSpace: spaces.selectedSpace
+    selectedSpace: spaces.selectedSpace,
+    authenticatedMember: spaces.guestSessionMember,
+    memberSession: spaces.memberSession
   });
   const room = useRoomCoordinator({ setScreen, spaces, transactions });
 

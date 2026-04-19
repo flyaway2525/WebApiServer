@@ -6,6 +6,7 @@ import { useLoadMembersAction } from './useLoadMembersAction';
 import { useLoadSpacesAction } from './useLoadSpacesAction';
 import { useSpaceState } from './useSpaceState';
 import {
+  CreateSpaceResponse,
   InlineNotice,
   JoinForm,
   JoinResponse,
@@ -26,6 +27,7 @@ export type SpacesController = {
   selectedSpaceId: number | null;
   setSelectedSpaceId: Dispatch<SetStateAction<number | null>>;
   guestSessionMember: SpaceMember | null;
+  memberSession: { memberId: number; spaceId: number; token: string; issuedAt: string } | null;
   recentSpaces: Space[];
   shareJoinLink: string;
   spaceForm: SpaceForm;
@@ -67,13 +69,15 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
 
   const createSpaceAction = useCreateSpaceAction({
     spaceForm: state.spaceForm,
-    onCreated: async (created) => {
+    onCreated: async (created: CreateSpaceResponse) => {
+      state.setGuestSessionMember(created.member);
+      state.setMemberSession(created.session);
       state.setSpaceForm({
         ...initialSpaceForm,
-        kind: created.kind,
-        visibility: created.kind === 'owner' ? 'members' : 'private',
-        initialPoints: String(created.initialPoints),
-        bankCanMint: created.kind === 'owner'
+        kind: created.space.kind,
+        visibility: created.space.kind === 'owner' ? 'members' : 'private',
+        initialPoints: String(created.space.initialPoints),
+        bankCanMint: created.space.kind === 'owner'
       });
       await loadSpacesAction.loadSpaces();
     }
@@ -83,6 +87,7 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
     joinForm: state.joinForm,
     onJoined: async (joined: JoinResponse) => {
       state.setGuestSessionMember(joined.member);
+      state.setMemberSession(joined.session);
       state.setJoinForm((current) => ({ ...current, code: '', displayName: '' }));
       state.setJoinNotice({
         tone: 'success',
@@ -133,6 +138,7 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
     selectedSpaceId: state.selectedSpaceId,
     setSelectedSpaceId: state.setSelectedSpaceId,
     guestSessionMember: state.guestSessionMember,
+    memberSession: state.memberSession,
     recentSpaces: state.recentSpaces,
     shareJoinLink: state.shareJoinLink,
     spaceForm: state.spaceForm,
@@ -152,7 +158,10 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
     updateJoinForm: state.updateJoinForm,
     handleModeChange: state.handleModeChange,
     applyJoinCodeFromQrPayload,
-    submitSpaceForm: createSpaceAction.submitSpaceForm,
+    submitSpaceForm: async () => {
+      const created = await createSpaceAction.submitSpaceForm();
+      return created?.space ?? null;
+    },
     submitJoinForm: joinSpaceAction.submitJoinForm
   };
 }
