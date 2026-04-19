@@ -362,6 +362,7 @@ export async function getTransactionRequestById(requestId) {
         target.display_name AS targetDisplayName,
         requests.amount,
         requests.note,
+        requests.rejection_reason AS rejectionReason,
         requests.approved_transaction_id AS approvedTransactionId,
         requests.resolved_at AS resolvedAt,
         requests.resolved_by_member_id AS resolvedByMemberId,
@@ -398,6 +399,7 @@ export async function listTransactionRequestsBySpaceId(spaceId) {
         target.display_name AS targetDisplayName,
         requests.amount,
         requests.note,
+        requests.rejection_reason AS rejectionReason,
         requests.approved_transaction_id AS approvedTransactionId,
         requests.resolved_at AS resolvedAt,
         requests.resolved_by_member_id AS resolvedByMemberId,
@@ -424,13 +426,15 @@ export async function resolveTransactionRequest(requestId, resolution) {
         status = ?,
         resolved_by_member_id = ?,
         resolved_at = CURRENT_TIMESTAMP,
-        approved_transaction_id = ?
+        approved_transaction_id = ?,
+        rejection_reason = ?
       WHERE id = ?
     `,
         args: [
             resolution.status,
             resolution.resolvedByMemberId,
             resolution.approvedTransactionId ?? null,
+            resolution.rejectionReason ?? null,
             requestId
         ]
     });

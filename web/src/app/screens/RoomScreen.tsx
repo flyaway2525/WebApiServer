@@ -1,5 +1,6 @@
 import { RoomHistoryList } from './RoomHistoryList';
 import { RoomOperationForm } from './RoomOperationForm';
+import { RoomPendingRequestList } from './RoomPendingRequestList';
 import { RoomScreenProps } from '../roomScreenProps';
 import { RoomSummaryCard } from './RoomSummaryCard';
 
@@ -41,6 +42,7 @@ export function RoomScreen(props: RoomScreenProps) {
 
           <RoomOperationForm
             selectedSpace={state.selectedSpace}
+            currentSessionMember={state.guestSessionMember}
             members={state.members}
             transactionError={state.transactionError}
             transactionForm={state.transactionForm}
@@ -55,6 +57,19 @@ export function RoomScreen(props: RoomScreenProps) {
             onRefreshTransactions={actions.onRefreshTransactions}
             formatTransactionLabel={formatters.formatTransactionLabel}
             formatActorLabel={formatters.formatActorLabel}
+          />
+
+          <RoomPendingRequestList
+            requests={state.transactionRequests}
+            loadingRequests={state.loadingTransactionRequests}
+            requestError={state.transactionRequestError}
+            resolvingRequestId={state.resolvingTransactionRequestId}
+            onRefreshRequests={actions.onRefreshTransactions}
+            onApproveRequest={actions.onApproveTransactionRequest}
+            onRejectRequest={actions.onRejectTransactionRequest}
+            canResolveRequest={formatters.canResolveTransactionRequest}
+            formatRequestLabel={formatters.formatTransactionRequestLabel}
+            formatRequestStatus={formatters.formatTransactionRequestStatus}
           />
         </section>
       ) : (

@@ -1,5 +1,8 @@
-import { createAuthorizedSpaceTransactionRequest } from '../api';
-import { buildTransactionPayload } from '../transactions';
+import {
+  createAuthorizedPendingTransactionRequest,
+  createAuthorizedSpaceTransactionRequest
+} from '../api';
+import { buildPendingTransactionRequestPayload, buildTransactionPayload } from '../transactions';
 import { SpaceMember, SpaceSession, TransactionForm } from '../types';
 
 type UseSubmitTransactionActionOptions = {
@@ -26,26 +29,50 @@ export function useSubmitTransactionAction(options: UseSubmitTransactionActionOp
       return;
     }
 
-    const result = buildTransactionPayload(options.transactionForm);
-    if (result.error) {
-      options.setTransactionError(result.error);
-      return;
+    if (options.transactionForm.submissionMode === 'request') {
+      const requestResult = buildPendingTransactionRequestPayload(options.transactionForm);
+      if (requestResult.error || !requestResult.payload) {
+        options.setTransactionError(requestResult.error ?? '取引の入力内容を確認してください。');
+        return;
+      }
+    } else {
+      const transactionResult = buildTransactionPayload(options.transactionForm);
+      if (transactionResult.error || !transactionResult.payload) {
+        options.setTransactionError(transactionResult.error ?? '取引の入力内容を確認してください。');
+        return;
+      }
     }
-
-    const payload = result.payload;
-    if (!payload) {
-      options.setTransactionError('取引の入力内容を確認してください。');
-      return;
-    }
-
-    payload.actorType = 'member';
-    payload.actorMemberId = options.authenticatedMember.id;
 
     options.setSubmittingTransaction(true);
     options.setTransactionError(null);
 
     try {
-      await createAuthorizedSpaceTransactionRequest(selectedSpaceId, payload, options.memberSession);
+      if (options.transactionForm.submissionMode === 'request') {
+        const requestResult = buildPendingTransactionRequestPayload(options.transactionForm);
+        const requestPayload = requestResult.payload;
+        if (!requestPayload) {
+          options.setTransactionError(requestResult.error ?? '取引の入力内容を確認してください。');
+          return;
+        }
+
+        await createAuthorizedPendingTransactionRequest(selectedSpaceId, requestPayload, options.memberSession);
+      } else {
+        const transactionResult = buildTransactionPayload(options.transactionForm);
+        const transactionPayload = transactionResult.payload;
+        if (!transactionPayload) {
+          options.setTransactionError(transactionResult.error ?? '取引の入力内容を確認してください。');
+          return;
+        }
+
+        const payload = {
+          ...transactionPayload,
+          actorType: 'member' as const,
+          actorMemberId: options.authenticatedMember.id
+        };
+
+        await createAuthorizedSpaceTransactionRequest(selectedSpaceId, payload, options.memberSession);
+      }
+
       await refreshAfterSubmit(selectedSpaceId);
       options.setTransactionForm((current) => ({
         ...current,
@@ -53,7 +80,13 @@ export function useSubmitTransactionAction(options: UseSubmitTransactionActionOp
         note: ''
       }));
     } catch (error) {
-      options.setTransactionError(error instanceof Error ? error.message : '取引の作成に失敗しました。');
+      options.setTransactionError(
+        error instanceof Error
+          ? error.message
+          : options.transactionForm.submissionMode === 'request'
+            ? '承認待ち取引の作成に失敗しました。'
+            : '取引の作成に失敗しました。'
+      );
     } finally {
       options.setSubmittingTransaction(false);
     }

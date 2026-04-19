@@ -1,4 +1,5 @@
 import {
+  PointManagerAppViewModel,
   PointManagerNavigationViewModel,
   PointManagerRoomViewModel,
   PointManagerSpacesViewModel,
@@ -10,4 +11,5 @@ export type SharedScreenPropsInput = {
   spaces: PointManagerSpacesViewModel;
   transactions: PointManagerTransactionsViewModel;
   room: PointManagerRoomViewModel;
+  formatters: PointManagerAppViewModel['formatters'];
 };

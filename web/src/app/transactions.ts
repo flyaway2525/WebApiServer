@@ -2,10 +2,19 @@ import {
   Space,
   SpaceMember,
   SpaceTransaction,
+  SpaceTransactionRequest,
   TransactionActorType,
   TransactionForm,
   TransactionKind
 } from './types';
+
+type PendingTransactionRequestPayload = {
+  kind: TransactionKind;
+  amount: number;
+  sourceMemberId?: number;
+  targetMemberId?: number;
+  note?: string;
+};
 
 type TransactionPayload = {
   kind: TransactionKind;
@@ -20,6 +29,10 @@ type TransactionPayload = {
 type TransactionPayloadResult =
   | { error: string; payload: null }
   | { error: null; payload: TransactionPayload };
+
+type PendingTransactionRequestPayloadResult =
+  | { error: string; payload: null }
+  | { error: null; payload: PendingTransactionRequestPayload };
 
 export function syncTransactionFormMembers(
   current: TransactionForm,
@@ -103,6 +116,54 @@ export function buildTransactionPayload(transactionForm: TransactionForm): Trans
   return { error: null, payload };
 }
 
+export function buildPendingTransactionRequestPayload(
+  transactionForm: TransactionForm
+): PendingTransactionRequestPayloadResult {
+  const amount = Number(transactionForm.amount);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { error: '金額は 1 以上の整数で入力してください。', payload: null };
+  }
+
+  const payload: PendingTransactionRequestPayload = {
+    kind: transactionForm.kind,
+    amount
+  };
+
+  if (transactionForm.kind === 'grant') {
+    if (!transactionForm.targetMemberId) {
+      return { error: '配布先を選択してください。', payload: null };
+    }
+
+    payload.targetMemberId = Number(transactionForm.targetMemberId);
+    if (transactionForm.sourceMemberId) {
+      payload.sourceMemberId = Number(transactionForm.sourceMemberId);
+    }
+  }
+
+  if (transactionForm.kind === 'transfer') {
+    if (!transactionForm.sourceMemberId || !transactionForm.targetMemberId) {
+      return { error: '譲渡元と譲渡先を選択してください。', payload: null };
+    }
+
+    payload.sourceMemberId = Number(transactionForm.sourceMemberId);
+    payload.targetMemberId = Number(transactionForm.targetMemberId);
+  }
+
+  if (transactionForm.kind === 'consume') {
+    if (!transactionForm.sourceMemberId) {
+      return { error: '使用元を選択してください。', payload: null };
+    }
+
+    payload.sourceMemberId = Number(transactionForm.sourceMemberId);
+  }
+
+  if (transactionForm.note.trim()) {
+    payload.note = transactionForm.note.trim();
+  }
+
+  return { error: null, payload };
+}
+
 export function formatTransactionLabel(item: SpaceTransaction) {
   if (item.kind === 'grant') {
     return item.sourceDisplayName
@@ -123,4 +184,54 @@ export function formatActorLabel(item: SpaceTransaction) {
   }
 
   return `実行者: ${item.actorType}`;
+}
+
+export function formatTransactionRequestLabel(item: SpaceTransactionRequest) {
+  if (item.kind === 'grant') {
+    return item.sourceDisplayName
+      ? `${item.sourceDisplayName} から ${item.targetDisplayName ?? 'unknown'} への配布申請`
+      : `${item.targetDisplayName ?? 'unknown'} への新規発行申請`;
+  }
+
+  if (item.kind === 'transfer') {
+    return `${item.sourceDisplayName ?? 'unknown'} から ${item.targetDisplayName ?? 'unknown'} への譲渡申請`;
+  }
+
+  return `${item.sourceDisplayName ?? 'unknown'} の使用申請`;
+}
+
+export function formatTransactionRequestStatus(item: SpaceTransactionRequest) {
+  if (item.status === 'approved') {
+    return item.resolvedByDisplayName
+      ? `承認済み: ${item.resolvedByDisplayName}`
+      : '承認済み';
+  }
+
+  if (item.status === 'rejected') {
+    return item.resolvedByDisplayName
+      ? `却下済み: ${item.resolvedByDisplayName}`
+      : '却下済み';
+  }
+
+  return '承認待ち';
+}
+
+export function canResolveTransactionRequest(
+  item: SpaceTransactionRequest,
+  authenticatedMember: SpaceMember | null,
+  selectedSpace: Space | null
+) {
+  if (!authenticatedMember || !selectedSpace) {
+    return false;
+  }
+
+  if (item.status !== 'pending') {
+    return false;
+  }
+
+  if (authenticatedMember.role === 'host') {
+    return true;
+  }
+
+  return item.sourceMemberId === authenticatedMember.id;
 }

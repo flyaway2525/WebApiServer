@@ -170,6 +170,7 @@ export async function initializeDatabase() {
       target_member_id INTEGER,
       amount INTEGER NOT NULL CHECK(amount > 0),
       note TEXT,
+      rejection_reason TEXT,
       approved_transaction_id INTEGER,
       resolved_at TEXT,
       resolved_by_member_id INTEGER,
@@ -212,6 +213,11 @@ export async function initializeDatabase() {
     }
     if (!hasActorType) {
         await client.execute("ALTER TABLE space_transactions ADD COLUMN actor_type TEXT NOT NULL DEFAULT 'member'");
+    }
+    const transactionRequestColumns = await client.execute('PRAGMA table_info(space_transaction_requests)');
+    const hasRejectionReason = transactionRequestColumns.rows.some((row) => String(row.name) === 'rejection_reason');
+    if (!hasRejectionReason) {
+        await client.execute('ALTER TABLE space_transaction_requests ADD COLUMN rejection_reason TEXT');
     }
     await client.execute("UPDATE space_transactions SET actor_type = 'member' WHERE actor_type IS NULL OR TRIM(actor_type) = ''");
     const existing = await client.execute('SELECT COUNT(*) AS count FROM tasks');

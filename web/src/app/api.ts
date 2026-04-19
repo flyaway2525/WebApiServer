@@ -6,6 +6,7 @@ import {
   SpaceMember,
   SpaceSession,
   SpaceTransaction,
+  SpaceTransactionRequest,
   apiBaseUrl
 } from './types';
 
@@ -31,6 +32,11 @@ export async function fetchSpaceMembers(spaceId: number) {
 export async function fetchSpaceTransactions(spaceId: number) {
   const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transactions`);
   return parseJsonResponse<{ items: SpaceTransaction[] }>(response, '取引履歴の取得に失敗しました。');
+}
+
+export async function fetchSpaceTransactionRequests(spaceId: number) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transaction-requests`);
+  return parseJsonResponse<{ items: SpaceTransactionRequest[] }>(response, '承認待ち取引の取得に失敗しました。');
 }
 
 export async function createSpaceRequest(spaceForm: SpaceForm) {
@@ -91,4 +97,50 @@ export async function createAuthorizedSpaceTransactionRequest(
   });
 
   return parseJsonResponse<SpaceTransaction>(response, '取引の作成に失敗しました。');
+}
+
+export async function createAuthorizedPendingTransactionRequest(
+  spaceId: number,
+  payload: Record<string, unknown>,
+  session: SpaceSession
+) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transaction-requests`, {
+    method: 'POST',
+    headers: createSessionHeaders(session),
+    body: JSON.stringify(payload)
+  });
+
+  return parseJsonResponse<SpaceTransactionRequest>(response, '承認待ち取引の作成に失敗しました。');
+}
+
+export async function approveSpaceTransactionRequest(
+  spaceId: number,
+  requestId: number,
+  session: SpaceSession
+) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transaction-requests/${requestId}/approve`, {
+    method: 'POST',
+    headers: createSessionHeaders(session)
+  });
+
+  return parseJsonResponse<SpaceTransactionRequest>(response, '承認待ち取引の承認に失敗しました。');
+}
+
+export async function rejectSpaceTransactionRequest(
+  spaceId: number,
+  requestId: number,
+  session: SpaceSession,
+  rejectionReason?: string
+) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transaction-requests/${requestId}/reject`, {
+    method: 'POST',
+    headers: createSessionHeaders(session),
+    body: JSON.stringify(
+      rejectionReason?.trim()
+        ? { rejectionReason: rejectionReason.trim() }
+        : {}
+    )
+  });
+
+  return parseJsonResponse<SpaceTransactionRequest>(response, '承認待ち取引の却下に失敗しました。');
 }

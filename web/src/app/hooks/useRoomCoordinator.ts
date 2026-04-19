@@ -14,6 +14,8 @@ export type RoomCoordinator = {
   openRoom: (spaceId: number) => Promise<void>;
   openSelectedRoom: () => Promise<void>;
   refreshCurrentTransactions: () => Promise<void>;
+  approveTransactionRequest: (requestId: number) => Promise<void>;
+  rejectTransactionRequest: (requestId: number, rejectionReason?: string) => Promise<void>;
   handleSpaceSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   handleJoinSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   handleTransactionSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -26,7 +28,8 @@ export function useRoomCoordinator(options: UseRoomCoordinatorOptions): RoomCoor
     options.setScreen('room');
     await Promise.all([
       options.spaces.loadMembers(spaceId),
-      options.transactions.loadTransactions(spaceId)
+      options.transactions.loadTransactions(spaceId),
+      options.transactions.loadTransactionRequests(spaceId)
     ]);
   }
 
@@ -38,7 +41,10 @@ export function useRoomCoordinator(options: UseRoomCoordinatorOptions): RoomCoor
 
   async function refreshCurrentTransactions() {
     if (options.spaces.selectedSpace) {
-      await options.transactions.loadTransactions(options.spaces.selectedSpace.id);
+      await Promise.all([
+        options.transactions.loadTransactions(options.spaces.selectedSpace.id),
+        options.transactions.loadTransactionRequests(options.spaces.selectedSpace.id)
+      ]);
     }
   }
 
@@ -46,8 +52,17 @@ export function useRoomCoordinator(options: UseRoomCoordinatorOptions): RoomCoor
     await Promise.all([
       options.spaces.loadSpaces(),
       options.spaces.loadMembers(spaceId),
-      options.transactions.loadTransactions(spaceId)
+      options.transactions.loadTransactions(spaceId),
+      options.transactions.loadTransactionRequests(spaceId)
     ]);
+  }
+
+  async function approveTransactionRequest(requestId: number) {
+    await options.transactions.approveTransactionRequest(options.spaces.selectedSpaceId, requestId);
+  }
+
+  async function rejectTransactionRequest(requestId: number, rejectionReason?: string) {
+    await options.transactions.rejectTransactionRequest(options.spaces.selectedSpaceId, requestId, rejectionReason);
   }
 
   async function handleSpaceSubmit(event: FormEvent<HTMLFormElement>) {
@@ -78,6 +93,8 @@ export function useRoomCoordinator(options: UseRoomCoordinatorOptions): RoomCoor
     openRoom,
     openSelectedRoom,
     refreshCurrentTransactions,
+    approveTransactionRequest,
+    rejectTransactionRequest,
     handleSpaceSubmit,
     handleJoinSubmit,
     handleTransactionSubmit,

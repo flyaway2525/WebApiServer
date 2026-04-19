@@ -48,10 +48,15 @@ export function createSpacesViewModel(controller: SpacesController): PointManage
 export function createTransactionsViewModel(controller: TransactionsController): PointManagerTransactionsViewModel {
   return {
     transactions: controller.transactions,
+    transactionRequests: controller.transactionRequests,
     loadingTransactions: controller.loadingTransactions,
+    loadingTransactionRequests: controller.loadingTransactionRequests,
     submittingTransaction: controller.submittingTransaction,
+    resolvingTransactionRequestId: controller.resolvingTransactionRequestId,
     transactionError: controller.transactionError,
+    transactionRequestError: controller.transactionRequestError,
     transactionForm: controller.transactionForm,
+    canResolveRequest: controller.canResolveRequest,
     updateTransactionForm: controller.updateTransactionForm
   };
 }
@@ -61,6 +66,8 @@ export function createRoomViewModel(coordinator: RoomCoordinator): PointManagerR
     openRoom: coordinator.openRoom,
     openSelectedRoom: coordinator.openSelectedRoom,
     refreshCurrentTransactions: coordinator.refreshCurrentTransactions,
+    approveTransactionRequest: coordinator.approveTransactionRequest,
+    rejectTransactionRequest: coordinator.rejectTransactionRequest,
     handleSpaceSubmit: coordinator.handleSpaceSubmit,
     handleJoinSubmit: coordinator.handleJoinSubmit,
     handleTransactionSubmit: coordinator.handleTransactionSubmit

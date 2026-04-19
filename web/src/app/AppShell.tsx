@@ -7,7 +7,6 @@ import {
   buildRoomScreenProps,
   buildTopbarProps
 } from './screenPropsBuilders';
-import { formatActorLabel, formatTransactionLabel } from './transactions';
 import { usePointManagerApp } from './usePointManagerApp';
 
 export default function AppShell() {
@@ -15,20 +14,18 @@ export default function AppShell() {
     navigation,
     spaces,
     transactions,
-    room
+    room,
+    formatters
   } = usePointManagerApp();
 
   const { screen } = navigation;
-  const sharedInput = { navigation, spaces, transactions, room };
+  const sharedInput = { navigation, spaces, transactions, room, formatters };
   const homeScreenProps = buildHomeScreenProps(navigation);
   const topbarProps = buildTopbarProps(sharedInput);
   const menuScreenProps = buildMenuScreenProps(sharedInput);
   const createScreenProps = buildCreateScreenProps(sharedInput);
   const joinScreenProps = buildJoinScreenProps(sharedInput);
-  const roomScreenProps = buildRoomScreenProps(sharedInput, {
-    formatTransactionLabel,
-    formatActorLabel
-  });
+  const roomScreenProps = buildRoomScreenProps(sharedInput, formatters);
 
   return (
     <main className="app-shell">

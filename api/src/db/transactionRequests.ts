@@ -120,7 +120,8 @@ export async function approveSpaceTransactionRequest(
 export async function rejectSpaceTransactionRequest(
   spaceId: number,
   requestId: number,
-  sessionMember: SpaceMemberRecord
+  sessionMember: SpaceMemberRecord,
+  rejectionReason?: string
 ): Promise<SpaceTransactionRequestRecord> {
   const request = await getTransactionRequestById(requestId);
   if (!request || request.spaceId !== spaceId) {
@@ -137,7 +138,8 @@ export async function rejectSpaceTransactionRequest(
 
   await resolveTransactionRequest(request.id, {
     status: 'rejected',
-    resolvedByMemberId: sessionMember.id
+    resolvedByMemberId: sessionMember.id,
+    rejectionReason: rejectionReason?.trim() || undefined
   });
 
   const rejected = await getTransactionRequestById(request.id);

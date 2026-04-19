@@ -203,3 +203,18 @@ export function parseCreateSpaceTransactionRequestInput(body) {
         }
     };
 }
+export function parseRejectTransactionRequestInput(body) {
+    const requestBody = (body ?? {});
+    const rejectionReason = typeof requestBody.rejectionReason === 'string'
+        ? requestBody.rejectionReason.trim()
+        : undefined;
+    if (typeof requestBody.rejectionReason === 'string' && rejectionReason && rejectionReason.length > 240) {
+        return { ok: false, message: 'rejectionReason must be 240 characters or fewer' };
+    }
+    return {
+        ok: true,
+        value: {
+            rejectionReason: rejectionReason || undefined
+        }
+    };
+}

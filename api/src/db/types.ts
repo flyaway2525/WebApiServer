@@ -118,6 +118,7 @@ export type SpaceTransactionRequestRecord = {
   targetDisplayName: string | null;
   amount: number;
   note: string | null;
+  rejectionReason: string | null;
   approvedTransactionId: number | null;
   resolvedAt: string | null;
   resolvedByMemberId: number | null;
@@ -135,4 +136,8 @@ export type CreateSpaceTransactionRequestInput = {
 
 export type UpdateSpaceStateInput = {
   state: SpaceState;
+};
+
+export type RejectTransactionRequestInput = {
+  rejectionReason?: string;
 };

@@ -3,6 +3,8 @@ export type SpaceKind = 'owner' | 'room';
 export type SpaceVisibility = 'private' | 'members' | 'public';
 export type TransactionKind = 'grant' | 'transfer' | 'consume';
 export type TransactionActorType = 'member' | 'system' | 'qr';
+export type TransactionSubmissionMode = 'direct' | 'request';
+export type TransactionRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export type Space = {
   id: number;
@@ -49,6 +51,27 @@ export type SpaceTransaction = {
   createdAt: string;
 };
 
+export type SpaceTransactionRequest = {
+  id: number;
+  spaceId: number;
+  kind: TransactionKind;
+  status: TransactionRequestStatus;
+  requesterMemberId: number;
+  requesterDisplayName: string | null;
+  sourceMemberId: number | null;
+  sourceDisplayName: string | null;
+  targetMemberId: number | null;
+  targetDisplayName: string | null;
+  amount: number;
+  note: string | null;
+  rejectionReason: string | null;
+  approvedTransactionId: number | null;
+  resolvedAt: string | null;
+  resolvedByMemberId: number | null;
+  resolvedByDisplayName: string | null;
+  createdAt: string;
+};
+
 export type SpaceForm = {
   name: string;
   kind: SpaceKind;
@@ -66,6 +89,7 @@ export type JoinForm = {
 };
 
 export type TransactionForm = {
+  submissionMode: TransactionSubmissionMode;
   kind: TransactionKind;
   actorType: TransactionActorType;
   actorMemberId: string;
@@ -118,6 +142,7 @@ export const initialJoinForm: JoinForm = {
 };
 
 export const initialTransactionForm: TransactionForm = {
+  submissionMode: 'direct',
   kind: 'grant',
   actorType: 'member',
   actorMemberId: '',

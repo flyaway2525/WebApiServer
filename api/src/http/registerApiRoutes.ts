@@ -22,6 +22,7 @@ import {
   parseCreateSpaceTransactionRequestInput,
   parseJoinSpaceInput,
   parseMemberSessionHeaders,
+  parseRejectTransactionRequestInput,
   parseRequestId,
   parseSpaceId,
   parseUpdateSpaceStateInput,
@@ -309,13 +310,24 @@ export function registerApiRoutes(app: Express) {
         return;
       }
 
+      const input = parseRejectTransactionRequestInput(request.body);
+      if (!input.ok) {
+        respondBadRequest(response, input.message);
+        return;
+      }
+
       try {
         const sessionMember = await authenticateMemberForSpace(
           spaceId.value,
           sessionHeaders.value.memberId,
           sessionHeaders.value.token
         );
-        const item = await rejectSpaceTransactionRequest(spaceId.value, requestId.value, sessionMember);
+        const item = await rejectSpaceTransactionRequest(
+          spaceId.value,
+          requestId.value,
+          sessionMember,
+          input.value.rejectionReason
+        );
         response.json(item);
       } catch (error) {
         if (error instanceof Error) {

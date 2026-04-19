@@ -82,6 +82,7 @@ export function mapTransactionRequestRow(row: Record<string, unknown>): SpaceTra
     targetDisplayName: row.targetDisplayName == null ? null : String(row.targetDisplayName),
     amount: Number(row.amount),
     note: row.note == null ? null : String(row.note),
+    rejectionReason: row.rejectionReason == null ? null : String(row.rejectionReason),
     approvedTransactionId: row.approvedTransactionId == null ? null : Number(row.approvedTransactionId),
     resolvedAt: row.resolvedAt == null ? null : String(row.resolvedAt),
     resolvedByMemberId: row.resolvedByMemberId == null ? null : Number(row.resolvedByMemberId),

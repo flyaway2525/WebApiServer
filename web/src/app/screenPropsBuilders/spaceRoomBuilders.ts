@@ -6,6 +6,8 @@ import { SharedScreenPropsInput } from './shared';
 type RoomFormatterInput = {
   formatTransactionLabel: RoomScreenProps['formatters']['formatTransactionLabel'];
   formatActorLabel: RoomScreenProps['formatters']['formatActorLabel'];
+  formatTransactionRequestLabel: RoomScreenProps['formatters']['formatTransactionRequestLabel'];
+  formatTransactionRequestStatus: RoomScreenProps['formatters']['formatTransactionRequestStatus'];
 };
 
 export function buildCreateScreenProps(input: Pick<SharedScreenPropsInput, 'navigation' | 'spaces' | 'room'>): CreateScreenProps {
@@ -52,20 +54,30 @@ export function buildRoomScreenProps(
       guestSessionMember: input.spaces.guestSessionMember,
       members: input.spaces.members,
       transactions: input.transactions.transactions,
+      transactionRequests: input.transactions.transactionRequests,
       loadingMembers: input.spaces.loadingMembers,
       loadingTransactions: input.transactions.loadingTransactions,
+      loadingTransactionRequests: input.transactions.loadingTransactionRequests,
       memberError: input.spaces.memberError,
       transactionError: input.transactions.transactionError,
+      transactionRequestError: input.transactions.transactionRequestError,
       transactionForm: input.transactions.transactionForm,
-      submittingTransaction: input.transactions.submittingTransaction
+      submittingTransaction: input.transactions.submittingTransaction,
+      resolvingTransactionRequestId: input.transactions.resolvingTransactionRequestId
     },
     actions: {
       onBackToMenu: input.navigation.openMenu,
       onOpenJoin: input.navigation.openJoin,
       onRefreshTransactions: () => void input.room.refreshCurrentTransactions(),
+      onApproveTransactionRequest: (requestId) => input.room.approveTransactionRequest(requestId),
+      onRejectTransactionRequest: (requestId, rejectionReason) =>
+        input.room.rejectTransactionRequest(requestId, rejectionReason),
       onTransactionFieldChange: input.transactions.updateTransactionForm,
       onSubmitTransaction: input.room.handleTransactionSubmit
     },
-    formatters
+    formatters: {
+      ...formatters,
+      canResolveTransactionRequest: input.transactions.canResolveRequest
+    }
   };
 }

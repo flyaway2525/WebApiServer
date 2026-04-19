@@ -23,6 +23,7 @@ export type {
   CreateSpaceTransactionRequestInput,
   JoinSpaceInput,
   JoinSpaceResult,
+  RejectTransactionRequestInput,
   RankingMode,
   SpaceKind,
   SpaceMemberRecord,

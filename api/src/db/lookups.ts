@@ -436,6 +436,7 @@ export async function getTransactionRequestById(requestId: number) {
         target.display_name AS targetDisplayName,
         requests.amount,
         requests.note,
+        requests.rejection_reason AS rejectionReason,
         requests.approved_transaction_id AS approvedTransactionId,
         requests.resolved_at AS resolvedAt,
         requests.resolved_by_member_id AS resolvedByMemberId,
@@ -475,6 +476,7 @@ export async function listTransactionRequestsBySpaceId(spaceId: number): Promise
         target.display_name AS targetDisplayName,
         requests.amount,
         requests.note,
+        requests.rejection_reason AS rejectionReason,
         requests.approved_transaction_id AS approvedTransactionId,
         requests.resolved_at AS resolvedAt,
         requests.resolved_by_member_id AS resolvedByMemberId,
@@ -500,6 +502,7 @@ export async function resolveTransactionRequest(
     status: 'approved' | 'rejected';
     resolvedByMemberId: number;
     approvedTransactionId?: number;
+    rejectionReason?: string;
   }
 ) {
   const client = getClient();
@@ -510,13 +513,15 @@ export async function resolveTransactionRequest(
         status = ?,
         resolved_by_member_id = ?,
         resolved_at = CURRENT_TIMESTAMP,
-        approved_transaction_id = ?
+        approved_transaction_id = ?,
+        rejection_reason = ?
       WHERE id = ?
     `,
     args: [
       resolution.status,
       resolution.resolvedByMemberId,
       resolution.approvedTransactionId ?? null,
+      resolution.rejectionReason ?? null,
       requestId
     ]
   });

@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 
-import { syncTransactionFormMembers } from '../transactions';
-import { Space, SpaceMember, SpaceTransaction, TransactionForm } from '../types';
+import {
+  canResolveTransactionRequest,
+  syncTransactionFormMembers
+} from '../transactions';
+import { approveSpaceTransactionRequest, fetchSpaceTransactionRequests, rejectSpaceTransactionRequest } from '../api';
+import { Space, SpaceMember, SpaceSession, SpaceTransaction, SpaceTransactionRequest, TransactionForm } from '../types';
 import { useLoadTransactionsAction } from './useLoadTransactionsAction';
 import { useSubmitTransactionAction } from './useSubmitTransactionAction';
 import { useTransactionState } from './useTransactionState';
@@ -10,16 +14,28 @@ type UseTransactionsOptions = {
   members: SpaceMember[];
   selectedSpace: Space | null;
   authenticatedMember: SpaceMember | null;
-  memberSession: import('../types').SpaceSession | null;
+  memberSession: SpaceSession | null;
 };
 
 export type TransactionsController = {
   transactions: SpaceTransaction[];
+  transactionRequests: SpaceTransactionRequest[];
   transactionForm: TransactionForm;
   loadingTransactions: boolean;
+  loadingTransactionRequests: boolean;
   submittingTransaction: boolean;
+  resolvingTransactionRequestId: number | null;
   transactionError: string | null;
+  transactionRequestError: string | null;
   loadTransactions: (spaceId: number) => Promise<void>;
+  loadTransactionRequests: (spaceId: number) => Promise<void>;
+  approveTransactionRequest: (spaceId: number | null, requestId: number) => Promise<void>;
+  rejectTransactionRequest: (
+    spaceId: number | null,
+    requestId: number,
+    rejectionReason?: string
+  ) => Promise<void>;
+  canResolveRequest: (item: SpaceTransactionRequest) => boolean;
   updateTransactionForm: <K extends keyof TransactionForm>(key: K, value: TransactionForm[K]) => void;
   submitTransactionForm: (
     selectedSpaceId: number | null,
@@ -45,6 +61,58 @@ export function useTransactions(options: UseTransactionsOptions): TransactionsCo
     setTransactionForm: state.setTransactionForm
   });
 
+  async function loadTransactionRequests(spaceId: number) {
+    state.setLoadingTransactionRequests(true);
+    state.setTransactionRequestError(null);
+
+    try {
+      const data = await fetchSpaceTransactionRequests(spaceId);
+      state.setTransactionRequests(data.items);
+    } catch (error) {
+      state.setTransactionRequestError(
+        error instanceof Error ? error.message : '承認待ち取引の取得に失敗しました。'
+      );
+    } finally {
+      state.setLoadingTransactionRequests(false);
+    }
+  }
+
+  async function resolveTransactionRequest(
+    action: 'approve' | 'reject',
+    spaceId: number | null,
+    requestId: number,
+    rejectionReason?: string
+  ) {
+    if (!spaceId) {
+      state.setTransactionRequestError('スペースを選択してください。');
+      return;
+    }
+
+    if (!options.memberSession) {
+      state.setTransactionRequestError('承認待ち取引を処理するには参加セッションが必要です。');
+      return;
+    }
+
+    state.setResolvingTransactionRequestId(requestId);
+    state.setTransactionRequestError(null);
+
+    try {
+      if (action === 'approve') {
+        await approveSpaceTransactionRequest(spaceId, requestId, options.memberSession);
+      } else {
+        await rejectSpaceTransactionRequest(spaceId, requestId, options.memberSession, rejectionReason);
+      }
+
+      await Promise.all([loadTransactionsAction.loadTransactions(spaceId), loadTransactionRequests(spaceId)]);
+    } catch (error) {
+      state.setTransactionRequestError(
+        error instanceof Error ? error.message : '承認待ち取引の更新に失敗しました。'
+      );
+    } finally {
+      state.setResolvingTransactionRequestId(null);
+    }
+  }
+
   useEffect(() => {
     if (!options.selectedSpace || options.members.length === 0) {
       return;
@@ -55,11 +123,20 @@ export function useTransactions(options: UseTransactionsOptions): TransactionsCo
 
   return {
     transactions: state.transactions,
+    transactionRequests: state.transactionRequests,
     transactionForm: state.transactionForm,
     loadingTransactions: state.loadingTransactions,
+    loadingTransactionRequests: state.loadingTransactionRequests,
     submittingTransaction: state.submittingTransaction,
+    resolvingTransactionRequestId: state.resolvingTransactionRequestId,
     transactionError: state.transactionError,
+    transactionRequestError: state.transactionRequestError,
     loadTransactions: loadTransactionsAction.loadTransactions,
+    loadTransactionRequests,
+    approveTransactionRequest: async (spaceId, requestId) => resolveTransactionRequest('approve', spaceId, requestId),
+    rejectTransactionRequest: async (spaceId, requestId, rejectionReason) =>
+      resolveTransactionRequest('reject', spaceId, requestId, rejectionReason),
+    canResolveRequest: (item) => canResolveTransactionRequest(item, options.authenticatedMember, options.selectedSpace),
     updateTransactionForm: state.updateTransactionForm,
     submitTransactionForm: submitTransactionAction.submitTransactionForm
   };

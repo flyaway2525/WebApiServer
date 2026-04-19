@@ -73,7 +73,7 @@ export async function approveSpaceTransactionRequest(spaceId, requestId, session
     }
     return approved;
 }
-export async function rejectSpaceTransactionRequest(spaceId, requestId, sessionMember) {
+export async function rejectSpaceTransactionRequest(spaceId, requestId, sessionMember, rejectionReason) {
     const request = await getTransactionRequestById(requestId);
     if (!request || request.spaceId !== spaceId) {
         throw new Error('Transaction request not found');
@@ -86,7 +86,8 @@ export async function rejectSpaceTransactionRequest(spaceId, requestId, sessionM
     }
     await resolveTransactionRequest(request.id, {
         status: 'rejected',
-        resolvedByMemberId: sessionMember.id
+        resolvedByMemberId: sessionMember.id,
+        rejectionReason: rejectionReason?.trim() || undefined
     });
     const rejected = await getTransactionRequestById(request.id);
     if (!rejected) {

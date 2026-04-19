@@ -1,5 +1,5 @@
 import { approveSpaceTransactionRequest, authenticateMemberForSpace, changeSpaceState, createSpace, createSpaceTransactionRequest, createSpaceTransaction, createTask, joinSpaceAsGuest, listSpaceMembers, listSpaces, listSpaceTransactionRequests, listSpaceTransactions, rejectSpaceTransactionRequest, listTasks } from '../db.js';
-import { parseCreateSpaceInput, parseCreateSpaceTransactionInput, parseCreateSpaceTransactionRequestInput, parseJoinSpaceInput, parseMemberSessionHeaders, parseRequestId, parseSpaceId, parseUpdateSpaceStateInput, parseTaskTitle, respondBadRequest } from './validation.js';
+import { parseCreateSpaceInput, parseCreateSpaceTransactionInput, parseCreateSpaceTransactionRequestInput, parseJoinSpaceInput, parseMemberSessionHeaders, parseRejectTransactionRequestInput, parseRequestId, parseSpaceId, parseUpdateSpaceStateInput, parseTaskTitle, respondBadRequest } from './validation.js';
 export function registerApiRoutes(app) {
     app.get('/api/tasks', async (_request, response, next) => {
         try {
@@ -225,9 +225,14 @@ export function registerApiRoutes(app) {
             respondBadRequest(response, sessionHeaders.message);
             return;
         }
+        const input = parseRejectTransactionRequestInput(request.body);
+        if (!input.ok) {
+            respondBadRequest(response, input.message);
+            return;
+        }
         try {
             const sessionMember = await authenticateMemberForSpace(spaceId.value, sessionHeaders.value.memberId, sessionHeaders.value.token);
-            const item = await rejectSpaceTransactionRequest(spaceId.value, requestId.value, sessionMember);
+            const item = await rejectSpaceTransactionRequest(spaceId.value, requestId.value, sessionMember, input.value.rejectionReason);
             response.json(item);
         }
         catch (error) {
