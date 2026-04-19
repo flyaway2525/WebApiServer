@@ -1,4 +1,5 @@
 import { Space, SpaceMember } from '../types';
+import { RoomJoinQrCard } from './RoomJoinQrCard';
 
 type RoomSummaryCardProps = {
   selectedSpace: Space;
@@ -44,8 +45,13 @@ export function RoomSummaryCard(props: RoomSummaryCardProps) {
         <div className="share-panel">
           <span className="muted-label">共有リンク</span>
           <p className="share-value">{props.shareJoinLink}</p>
-          <p className="muted">このリンクを QR 化すれば Join Space の QR 入力欄で読み取れます。</p>
+          <p className="muted">このリンクは QR コードとしても表示され、Join Space の既存導線にそのまま接続されます。</p>
         </div>
+        <RoomJoinQrCard
+          shareJoinLink={props.shareJoinLink}
+          spaceCode={props.selectedSpace.code}
+          spaceName={props.selectedSpace.name}
+        />
       </div>
       {props.loadingMembers ? <p className="muted">メンバーを取得中...</p> : null}
       {props.memberError ? <p className="error-banner">{props.memberError}</p> : null}

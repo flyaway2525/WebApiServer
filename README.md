@@ -13,6 +13,7 @@ React Web クライアント、将来の Unity クライアント、Express API 
 - Swagger UI から API 実行を確認済みです
 - グローバル Node.js なしで動くように、ローカル配置の Node.js を使う構成です
 - Join Space では共有リンクや QR 文字列を貼り付けてスペースコードを抽出できます
+- Room では共有リンクから参加用 QR コードを生成して表示できます
 
 ## Quick Start
 

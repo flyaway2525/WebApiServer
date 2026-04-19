@@ -1,6 +1,7 @@
 {
     "recommendations": [
         "mhutchie.git-graph",
-        "ms-vscode.powershell"
+        "ms-vscode.powershell",
+        "qwtel.sqlite-viewer"
     ]
 }
