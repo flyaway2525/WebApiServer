@@ -43,6 +43,16 @@ The current goal is to support local development on Windows without requiring a 
 - On PowerShell, use the workspace terminal profile so `npm.cmd` is used instead of `npm.ps1`.
 - `Task Explorer` was removed from recommendations because it failed extension validation in this environment. Prefer standard VS Code tasks.
 
+## Code Organization Rules
+
+- Prefer `1 file = 1 primary responsibility` over keeping related logic in one large file.
+- Use `200-300` lines as the normal target size for implementation files.
+- When a file grows past roughly `400` lines, review whether it should be split by responsibility.
+- When a file grows past roughly `500` lines, treat it as an exception that needs an explicit reason in review.
+- Allowed exceptions include focused type-definition files, UI markup-heavy screen components, and schema/query definition files, but only when their responsibility boundary stays clear.
+- For the web app, split by `screens`, `hooks`, `services`, and `formatters` before adding more logic to `AppShell.tsx`.
+- For the API, keep lazy DB client creation intact and prefer separating `types`, `initialization`, and feature-specific queries instead of growing `db.ts` further.
+
 ## Verified Local URLs
 
 - Web: `http://localhost:5173`

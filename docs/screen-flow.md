@@ -146,6 +146,9 @@ flowchart TD
 - `S3 Join Space` uses the existing `POST /api/spaces/join` endpoint and can normalize raw space codes or pasted QR payload strings into the `space code` field.
 - `S4 Room` currently keeps point operation and history on the same page for MVP speed.
 - `S4 Room` exposes a share link that can be converted into a QR code outside the app and consumed by `S3 Join Space`.
+- `web/src/app/AppShell.tsx` should remain an orchestration layer for screen selection and shared state; API calls, transaction formatting, and other reusable logic should be split into sibling modules.
+- Use `screens`, `hooks`, `services`, and `formatters` as the first split boundaries before creating deeper folder nesting.
+- A single screen file can exceed the normal line target when it is mostly markup, but interaction logic should still move out once the file starts mixing state, network access, and formatting rules.
 
 ## Suggested Next Build Order
 
