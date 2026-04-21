@@ -2,10 +2,12 @@ import { RoomHistoryList } from './RoomHistoryList';
 import { RoomOperationForm } from './RoomOperationForm';
 import { RoomPendingRequestList } from './RoomPendingRequestList';
 import { RoomScreenProps } from '../roomScreenProps';
+import { hasCapability } from '../roles';
 import { RoomSummaryCard } from './RoomSummaryCard';
 
 export function RoomScreen(props: RoomScreenProps) {
   const { state, actions, formatters } = props;
+  const canViewTransactionRequests = hasCapability(state.guestSessionMember, 'viewTransactionRequests');
 
   return (
     <>
@@ -25,7 +27,7 @@ export function RoomScreen(props: RoomScreenProps) {
           <div className="session-banner">
             <span>Current session</span>
             <strong>{state.guestSessionMember.displayName}</strong>
-            <p>ID {state.guestSessionMember.id} として操作中</p>
+            <p>ID {state.guestSessionMember.id} / {state.guestSessionMember.roleLabel} として操作中</p>
           </div>
         ) : null}
       </section>
@@ -59,18 +61,25 @@ export function RoomScreen(props: RoomScreenProps) {
             formatActorLabel={formatters.formatActorLabel}
           />
 
-          <RoomPendingRequestList
-            requests={state.transactionRequests}
-            loadingRequests={state.loadingTransactionRequests}
-            requestError={state.transactionRequestError}
-            resolvingRequestId={state.resolvingTransactionRequestId}
-            onRefreshRequests={actions.onRefreshTransactions}
-            onApproveRequest={actions.onApproveTransactionRequest}
-            onRejectRequest={actions.onRejectTransactionRequest}
-            canResolveRequest={formatters.canResolveTransactionRequest}
-            formatRequestLabel={formatters.formatTransactionRequestLabel}
-            formatRequestStatus={formatters.formatTransactionRequestStatus}
-          />
+          {canViewTransactionRequests ? (
+            <RoomPendingRequestList
+              requests={state.transactionRequests}
+              loadingRequests={state.loadingTransactionRequests}
+              requestError={state.transactionRequestError}
+              resolvingRequestId={state.resolvingTransactionRequestId}
+              onRefreshRequests={actions.onRefreshTransactions}
+              onApproveRequest={actions.onApproveTransactionRequest}
+              onRejectRequest={actions.onRejectTransactionRequest}
+              canResolveRequest={formatters.canResolveTransactionRequest}
+              formatRequestLabel={formatters.formatTransactionRequestLabel}
+              formatRequestStatus={formatters.formatTransactionRequestStatus}
+            />
+          ) : (
+            <article className="glass-card history-card room-request-card">
+              <h2>申請一覧</h2>
+              <p className="muted">現在のロールでは申請一覧を表示できません。</p>
+            </article>
+          )}
         </section>
       ) : (
         <section className="content-grid room-grid">

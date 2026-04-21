@@ -4,7 +4,7 @@ import {
   canResolveTransactionRequest,
   syncTransactionFormMembers
 } from '../transactions';
-import { approveSpaceTransactionRequest, fetchSpaceTransactionRequests, rejectSpaceTransactionRequest } from '../api';
+import { approveSpaceTransactionRequest, fetchAuthorizedSpaceTransactionRequests, rejectSpaceTransactionRequest } from '../api';
 import { Space, SpaceMember, SpaceSession, SpaceTransaction, SpaceTransactionRequest, TransactionForm } from '../types';
 import { useLoadTransactionsAction } from './useLoadTransactionsAction';
 import { useSubmitTransactionAction } from './useSubmitTransactionAction';
@@ -66,7 +66,11 @@ export function useTransactions(options: UseTransactionsOptions): TransactionsCo
     state.setTransactionRequestError(null);
 
     try {
-      const data = await fetchSpaceTransactionRequests(spaceId);
+      if (!options.memberSession) {
+        throw new Error('申請一覧を取得するには参加セッションが必要です。');
+      }
+
+      const data = await fetchAuthorizedSpaceTransactionRequests(spaceId, options.memberSession);
       state.setTransactionRequests(data.items);
     } catch (error) {
       state.setTransactionRequestError(
@@ -103,7 +107,7 @@ export function useTransactions(options: UseTransactionsOptions): TransactionsCo
         await rejectSpaceTransactionRequest(spaceId, requestId, options.memberSession, rejectionReason);
       }
 
-      await Promise.all([loadTransactionsAction.loadTransactions(spaceId), loadTransactionRequests(spaceId)]);
+      await Promise.all([loadTransactionsAction.loadTransactions(spaceId, options.memberSession), loadTransactionRequests(spaceId)]);
     } catch (error) {
       state.setTransactionRequestError(
         error instanceof Error ? error.message : '承認待ち取引の更新に失敗しました。'
@@ -131,7 +135,7 @@ export function useTransactions(options: UseTransactionsOptions): TransactionsCo
     resolvingTransactionRequestId: state.resolvingTransactionRequestId,
     transactionError: state.transactionError,
     transactionRequestError: state.transactionRequestError,
-    loadTransactions: loadTransactionsAction.loadTransactions,
+    loadTransactions: (spaceId) => loadTransactionsAction.loadTransactions(spaceId, options.memberSession),
     loadTransactionRequests,
     approveTransactionRequest: async (spaceId, requestId) => resolveTransactionRequest('approve', spaceId, requestId),
     rejectTransactionRequest: async (spaceId, requestId, rejectionReason) =>

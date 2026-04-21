@@ -23,6 +23,11 @@ export function useCreateSpaceAction(options: UseCreateSpaceActionOptions) {
       return null;
     }
 
+    if (!options.spaceForm.rolePreset) {
+      setCreateError('ロールプリセットを選択してください。');
+      return null;
+    }
+
     setSubmittingSpace(true);
     setCreateError(null);
 

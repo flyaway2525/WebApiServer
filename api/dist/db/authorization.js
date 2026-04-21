@@ -1,4 +1,10 @@
 import { getSpaceMemberById } from './lookups.js';
+import { hasCapability } from './roleDefinitions.js';
+export function assertReadPermission(sessionMember, capability) {
+    if (!hasCapability(sessionMember, capability)) {
+        throw new Error('You are not allowed to view this resource');
+    }
+}
 function requireActiveSpace(space) {
     if (space.state !== 'active') {
         throw new Error('Space is not active');
@@ -27,7 +33,10 @@ export function assertTransactionPermission(sessionMember, space, input) {
     if (input.actorMemberId !== sessionMember.id) {
         throw new Error('actorMemberId must match the authenticated member');
     }
-    if (sessionMember.role === 'host') {
+    if (!hasCapability(sessionMember, 'createTransaction')) {
+        throw new Error('You are not allowed to create direct transactions');
+    }
+    if (hasCapability(sessionMember, 'manageSpaceState')) {
         return;
     }
     if (input.kind === 'grant') {
@@ -57,6 +66,9 @@ export function assertTransactionPermission(sessionMember, space, input) {
 }
 export function assertTransactionRequestPermission(sessionMember, space, input) {
     requireActiveSpace(space);
+    if (!hasCapability(sessionMember, 'createTransactionRequest')) {
+        throw new Error('You are not allowed to create transaction requests');
+    }
     if (input.kind === 'grant') {
         if (input.sourceMemberId == null || input.targetMemberId == null) {
             throw new Error('grant requests require both sourceMemberId and targetMemberId');
@@ -78,15 +90,15 @@ export function assertTransactionRequestPermission(sessionMember, space, input) 
     }
 }
 export function canResolveTransactionRequest(sessionMember, request) {
-    if (sessionMember.role === 'host') {
+    if (hasCapability(sessionMember, 'resolveTransactionRequest')) {
         return true;
     }
     return request.sourceMemberId === sessionMember.id;
 }
 export function canUpdateSpaceState(sessionMember, space, nextState) {
-    const isPrivileged = sessionMember.role === 'host' || (space.kind === 'owner' && sessionMember.role === 'bank');
+    const isPrivileged = hasCapability(sessionMember, 'manageSpaceState');
     if (!isPrivileged) {
-        throw new Error('Only host or BANK can change the space state');
+        throw new Error('Only privileged members can change the space state');
     }
     if (space.state === 'archived' && nextState !== 'archived') {
         throw new Error('Archived spaces cannot be reopened');

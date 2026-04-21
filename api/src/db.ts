@@ -1,10 +1,13 @@
 export { initializeDatabase } from './db/initialization.js';
 export {
+  authenticateMember,
   authenticateMemberForSpace,
   changeSpaceState,
   createSpace,
   createSpaceWithSession,
   joinSpaceAsGuest,
+  listSpaceRoleDefinitionsByCode,
+  listSpaceRoleDefinitionsByCodeForMember,
   listSpaceMembers,
   listSpaces
 } from './db/spaces.js';
@@ -25,9 +28,12 @@ export type {
   JoinSpaceResult,
   RejectTransactionRequestInput,
   RankingMode,
+  RoleCapabilityKey,
   SpaceKind,
   SpaceMemberRecord,
   SpaceRecord,
+  SpaceRoleDefinitionRecord,
+  SpaceRolePresetKey,
   SpaceRole,
   SpaceSessionRecord,
   SpaceState,

@@ -1,10 +1,34 @@
 export type Screen = 'home' | 'menu' | 'create' | 'join' | 'room';
 export type SpaceKind = 'owner' | 'room';
 export type SpaceVisibility = 'private' | 'members' | 'public';
+export type SpaceRolePresetKey = 'owner-bank' | 'standard-room' | 'tournament-room';
+export type RoleCapabilityKey =
+  | 'viewMembers'
+  | 'viewRanking'
+  | 'viewTransactions'
+  | 'viewTransactionRequests'
+  | 'createTransaction'
+  | 'createTransactionRequest'
+  | 'resolveTransactionRequest'
+  | 'manageSpaceState'
+  | 'mintPoints';
 export type TransactionKind = 'grant' | 'transfer' | 'consume';
 export type TransactionActorType = 'member' | 'system' | 'qr';
 export type TransactionSubmissionMode = 'direct' | 'request';
 export type TransactionRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export type SpaceRoleDefinition = {
+  id: number;
+  spaceId: number;
+  key: string;
+  label: string;
+  description: string | null;
+  legacyRole: 'host' | 'bank' | 'member';
+  maxParticipants: number | null;
+  isSystem: boolean;
+  capabilities: RoleCapabilityKey[];
+  createdAt: string;
+};
 
 export type Space = {
   id: number;
@@ -29,6 +53,10 @@ export type SpaceMember = {
   spaceId: number;
   displayName: string;
   role: 'host' | 'bank' | 'member';
+  roleDefinitionId: number | null;
+  roleKey: string;
+  roleLabel: string;
+  capabilities: RoleCapabilityKey[];
   isGuest: boolean;
   points: number;
   canTransfer: boolean;
@@ -76,6 +104,7 @@ export type SpaceForm = {
   name: string;
   kind: SpaceKind;
   visibility: SpaceVisibility;
+  rolePreset: SpaceRolePresetKey;
   initialPoints: string;
   allowGuestJoin: boolean;
   bankCanMint: boolean;
@@ -85,6 +114,7 @@ export type SpaceForm = {
 export type JoinForm = {
   code: string;
   displayName: string;
+  roleKey: string;
   qrPayload: string;
 };
 
@@ -129,6 +159,7 @@ export const initialSpaceForm: SpaceForm = {
   name: '',
   kind: 'owner',
   visibility: 'members',
+  rolePreset: 'owner-bank',
   initialPoints: '10000',
   allowGuestJoin: true,
   bankCanMint: true,
@@ -138,8 +169,15 @@ export const initialSpaceForm: SpaceForm = {
 export const initialJoinForm: JoinForm = {
   code: '',
   displayName: '',
+  roleKey: '',
   qrPayload: ''
 };
+
+export const rolePresetOptions: Array<{ value: SpaceRolePresetKey; label: string; kind: SpaceKind }> = [
+  { value: 'owner-bank', label: 'Owner + BANK', kind: 'owner' },
+  { value: 'standard-room', label: '標準 Room', kind: 'room' },
+  { value: 'tournament-room', label: '大会 Room', kind: 'room' }
+];
 
 export const initialTransactionForm: TransactionForm = {
   submissionMode: 'direct',

@@ -18,6 +18,11 @@ export const openApiSpecification = swaggerJsdoc({
                 get: {
                     tags: ['Spaces'],
                     summary: 'List spaces',
+                    description: 'Without session headers, only public spaces are returned. With a valid member session, public spaces plus the authenticated member\'s own space are returned.',
+                    parameters: [
+                        { $ref: '#/components/parameters/SpaceMemberIdHeader' },
+                        { $ref: '#/components/parameters/SpaceSessionTokenHeader' }
+                    ],
                     responses: {
                         '200': {
                             description: 'Available spaces',
@@ -112,11 +117,53 @@ export const openApiSpecification = swaggerJsdoc({
                     }
                 }
             },
+            '/api/spaces/by-code/{code}/role-definitions': {
+                get: {
+                    tags: ['Spaces'],
+                    summary: 'List joinable role definitions for a space code',
+                    description: 'Available when guest join is enabled for the space, or when a valid member session for the same space is provided.',
+                    parameters: [
+                        {
+                            name: 'code',
+                            in: 'path',
+                            required: true,
+                            schema: { type: 'string' }
+                        },
+                        { $ref: '#/components/parameters/SpaceMemberIdHeader' },
+                        { $ref: '#/components/parameters/SpaceSessionTokenHeader' }
+                    ],
+                    responses: {
+                        '200': {
+                            description: 'Role definitions for the selected space code',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        required: ['items'],
+                                        properties: {
+                                            items: {
+                                                type: 'array',
+                                                items: { $ref: '#/components/schemas/SpaceRoleDefinition' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        '400': { $ref: '#/components/responses/BadRequest' }
+                    }
+                }
+            },
             '/api/spaces/{spaceId}/members': {
                 get: {
                     tags: ['Spaces'],
                     summary: 'List members in a space',
-                    parameters: [{ $ref: '#/components/parameters/SpaceId' }],
+                    description: 'Requires an authenticated member session with viewMembers capability.',
+                    parameters: [
+                        { $ref: '#/components/parameters/SpaceId' },
+                        { $ref: '#/components/parameters/SpaceMemberIdHeader' },
+                        { $ref: '#/components/parameters/SpaceSessionTokenHeader' }
+                    ],
                     responses: {
                         '200': {
                             description: 'Members in the selected space',
@@ -143,7 +190,12 @@ export const openApiSpecification = swaggerJsdoc({
                 get: {
                     tags: ['Transactions'],
                     summary: 'List direct transactions in a space',
-                    parameters: [{ $ref: '#/components/parameters/SpaceId' }],
+                    description: 'Requires an authenticated member session with viewTransactions capability.',
+                    parameters: [
+                        { $ref: '#/components/parameters/SpaceId' },
+                        { $ref: '#/components/parameters/SpaceMemberIdHeader' },
+                        { $ref: '#/components/parameters/SpaceSessionTokenHeader' }
+                    ],
                     responses: {
                         '200': {
                             description: 'Transactions in the selected space',
@@ -230,8 +282,11 @@ export const openApiSpecification = swaggerJsdoc({
                 get: {
                     tags: ['Transactions'],
                     summary: 'List transaction requests for a space',
+                    description: 'Requires an authenticated member session with viewTransactionRequests capability.',
                     parameters: [
-                        { $ref: '#/components/parameters/SpaceId' }
+                        { $ref: '#/components/parameters/SpaceId' },
+                        { $ref: '#/components/parameters/SpaceMemberIdHeader' },
+                        { $ref: '#/components/parameters/SpaceSessionTokenHeader' }
                     ],
                     responses: {
                         '200': {
@@ -414,15 +469,47 @@ export const openApiSpecification = swaggerJsdoc({
                 },
                 SpaceMember: {
                     type: 'object',
-                    required: ['id', 'spaceId', 'displayName', 'role', 'isGuest', 'points', 'canTransfer', 'createdAt'],
+                    required: ['id', 'spaceId', 'displayName', 'role', 'roleDefinitionId', 'roleKey', 'roleLabel', 'capabilities', 'isGuest', 'points', 'canTransfer', 'createdAt'],
                     properties: {
                         id: { type: 'integer', minimum: 1 },
                         spaceId: { type: 'integer', minimum: 1 },
                         displayName: { type: 'string' },
                         role: { type: 'string', enum: ['host', 'bank', 'member'] },
+                        roleDefinitionId: { type: 'integer', nullable: true },
+                        roleKey: { type: 'string' },
+                        roleLabel: { type: 'string' },
+                        capabilities: {
+                            type: 'array',
+                            items: {
+                                type: 'string',
+                                enum: ['viewMembers', 'viewRanking', 'viewTransactions', 'viewTransactionRequests', 'createTransaction', 'createTransactionRequest', 'resolveTransactionRequest', 'manageSpaceState', 'mintPoints']
+                            }
+                        },
                         isGuest: { type: 'boolean' },
                         points: { type: 'integer' },
                         canTransfer: { type: 'boolean' },
+                        createdAt: { type: 'string', format: 'date-time' }
+                    }
+                },
+                SpaceRoleDefinition: {
+                    type: 'object',
+                    required: ['id', 'spaceId', 'key', 'label', 'legacyRole', 'maxParticipants', 'isSystem', 'capabilities', 'createdAt'],
+                    properties: {
+                        id: { type: 'integer', minimum: 1 },
+                        spaceId: { type: 'integer', minimum: 1 },
+                        key: { type: 'string' },
+                        label: { type: 'string' },
+                        description: { type: 'string', nullable: true },
+                        legacyRole: { type: 'string', enum: ['host', 'bank', 'member'] },
+                        maxParticipants: { type: 'integer', nullable: true },
+                        isSystem: { type: 'boolean' },
+                        capabilities: {
+                            type: 'array',
+                            items: {
+                                type: 'string',
+                                enum: ['viewMembers', 'viewRanking', 'viewTransactions', 'viewTransactionRequests', 'createTransaction', 'createTransactionRequest', 'resolveTransactionRequest', 'manageSpaceState', 'mintPoints']
+                            }
+                        },
                         createdAt: { type: 'string', format: 'date-time' }
                     }
                 },
@@ -444,6 +531,7 @@ export const openApiSpecification = swaggerJsdoc({
                         name: { type: 'string' },
                         kind: { type: 'string', enum: ['owner', 'room'] },
                         visibility: { type: 'string', enum: ['private', 'members', 'public'] },
+                        rolePreset: { type: 'string', enum: ['owner-bank', 'standard-room', 'tournament-room'] },
                         initialPoints: { type: 'integer', minimum: 0 },
                         allowGuestJoin: { type: 'boolean' },
                         bankCanMint: { type: 'boolean' },
@@ -455,7 +543,8 @@ export const openApiSpecification = swaggerJsdoc({
                     required: ['code', 'displayName'],
                     properties: {
                         code: { type: 'string' },
-                        displayName: { type: 'string' }
+                        displayName: { type: 'string' },
+                        roleKey: { type: 'string', description: 'Join role key such as member, player, or spectator.' }
                     }
                 },
                 CreateSpaceResponse: {

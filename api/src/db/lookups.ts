@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import { getClient } from './client.js';
-import { mapMemberRow, mapSpaceRow, mapTransactionRequestRow, mapTransactionRow } from './mappers.js';
+import { mapMemberRow, mapRoleDefinitionRow, mapSpaceRow, mapTransactionRequestRow, mapTransactionRow } from './mappers.js';
 import {
   CreateSpaceInput,
+  CreateSpaceRoleDefinitionInput,
   SpaceMemberRecord,
+  SpaceRoleDefinitionRecord,
   SpaceRecord,
   SpaceSessionRecord,
   SpaceTransactionRecord,
@@ -71,27 +73,124 @@ export async function insertMember(
         space_id,
         display_name,
         role,
+        role_definition_id,
         is_guest,
         points,
         can_transfer,
         session_token,
         session_created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     args: [
       spaceId,
       member.displayName,
       member.role,
+      member.roleDefinitionId,
       member.isGuest ? 1 : 0,
       member.points,
-        member.canTransfer ? 1 : 0,
-        null,
-        null
+      member.canTransfer ? 1 : 0,
+      null,
+      null
     ]
   });
 
   const inserted = await client.execute('SELECT last_insert_rowid() AS id');
   return Number(inserted.rows[0]?.id ?? 0);
+}
+
+export async function insertRoleDefinition(spaceId: number, roleDefinition: CreateSpaceRoleDefinitionInput) {
+  const client = getClient();
+
+  await client.execute({
+    sql: `
+      INSERT INTO space_role_definitions (
+        space_id,
+        role_key,
+        label,
+        description,
+        legacy_role,
+        max_participants,
+        is_system,
+        capabilities_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    args: [
+      spaceId,
+      roleDefinition.key,
+      roleDefinition.label,
+      roleDefinition.description ?? null,
+      roleDefinition.legacyRole,
+      roleDefinition.maxParticipants ?? null,
+      roleDefinition.isSystem ? 1 : 0,
+      JSON.stringify(roleDefinition.capabilities)
+    ]
+  });
+
+  const inserted = await client.execute('SELECT last_insert_rowid() AS id');
+  return Number(inserted.rows[0]?.id ?? 0);
+}
+
+export async function listRoleDefinitionsBySpaceId(spaceId: number): Promise<SpaceRoleDefinitionRecord[]> {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `
+      SELECT
+        id,
+        space_id AS spaceId,
+        role_key AS key,
+        label,
+        description,
+        legacy_role AS legacyRole,
+        max_participants AS maxParticipants,
+        is_system AS isSystem,
+        capabilities_json AS capabilitiesJson,
+        created_at AS createdAt
+      FROM space_role_definitions
+      WHERE space_id = ?
+      ORDER BY is_system DESC, id ASC
+    `,
+    args: [spaceId]
+  });
+
+  return result.rows.map((row: Record<string, unknown>) => mapRoleDefinitionRow(row));
+}
+
+export async function getRoleDefinitionBySpaceIdAndKey(spaceId: number, roleKey: string) {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `
+      SELECT
+        id,
+        space_id AS spaceId,
+        role_key AS key,
+        label,
+        description,
+        legacy_role AS legacyRole,
+        max_participants AS maxParticipants,
+        is_system AS isSystem,
+        capabilities_json AS capabilitiesJson,
+        created_at AS createdAt
+      FROM space_role_definitions
+      WHERE space_id = ? AND role_key = ?
+    `,
+    args: [spaceId, roleKey]
+  });
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapRoleDefinitionRow(result.rows[0] as Record<string, unknown>);
+}
+
+export async function countMembersByRoleDefinitionId(roleDefinitionId: number) {
+  const client = getClient();
+  const result = await client.execute({
+    sql: 'SELECT COUNT(*) AS count FROM space_members WHERE role_definition_id = ?',
+    args: [roleDefinitionId]
+  });
+
+  return Number(result.rows[0]?.count ?? 0);
 }
 
 export async function insertTransactionEntry(
@@ -247,11 +346,16 @@ export async function getSpaceMemberById(memberId: number) {
         space_id AS spaceId,
         display_name AS displayName,
         role,
+        role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, role) AS roleKey,
+        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
         is_guest AS isGuest,
         points,
         can_transfer AS canTransfer,
         created_at AS createdAt
       FROM space_members
+      LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
       WHERE id = ?
     `,
     args: [memberId]
@@ -312,6 +416,10 @@ export async function getAuthenticatedMember(spaceId: number, memberId: number, 
         space_id AS spaceId,
         display_name AS displayName,
         role,
+        role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, role) AS roleKey,
+        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
         is_guest AS isGuest,
         points,
         can_transfer AS canTransfer,
@@ -319,9 +427,56 @@ export async function getAuthenticatedMember(spaceId: number, memberId: number, 
         session_token AS sessionToken,
         session_created_at AS sessionIssuedAt
       FROM space_members
+      LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
       WHERE id = ? AND space_id = ?
     `,
     args: [memberId, spaceId]
+  });
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0] as Record<string, unknown>;
+  if (String(row.sessionToken ?? '') !== token) {
+    return null;
+  }
+
+  return {
+    member: mapMemberRow(row),
+    session: {
+      memberId: Number(row.id),
+      spaceId: Number(row.spaceId),
+      token,
+      issuedAt: String(row.sessionIssuedAt ?? '')
+    }
+  };
+}
+
+export async function getAuthenticatedMemberById(memberId: number, token: string) {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `
+      SELECT
+        id,
+        space_id AS spaceId,
+        display_name AS displayName,
+        role,
+        role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, role) AS roleKey,
+        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
+        is_guest AS isGuest,
+        points,
+        can_transfer AS canTransfer,
+        created_at AS createdAt,
+        session_token AS sessionToken,
+        session_created_at AS sessionIssuedAt
+      FROM space_members
+      LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
+      WHERE id = ?
+    `,
+    args: [memberId]
   });
 
   if (result.rows.length === 0) {

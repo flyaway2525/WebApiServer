@@ -2,6 +2,7 @@ import { NextFunction, Request, Response, Express } from 'express';
 
 import {
   approveSpaceTransactionRequest,
+  authenticateMember,
   authenticateMemberForSpace,
   changeSpaceState,
   createSpace,
@@ -9,6 +10,8 @@ import {
   createSpaceTransaction,
   createTask,
   joinSpaceAsGuest,
+  listSpaceRoleDefinitionsByCode,
+  listSpaceRoleDefinitionsByCodeForMember,
   listSpaceMembers,
   listSpaces,
   listSpaceTransactionRequests,
@@ -22,6 +25,7 @@ import {
   parseCreateSpaceTransactionRequestInput,
   parseJoinSpaceInput,
   parseMemberSessionHeaders,
+  parseOptionalMemberSessionHeaders,
   parseRejectTransactionRequestInput,
   parseRequestId,
   parseSpaceId,
@@ -29,6 +33,7 @@ import {
   parseTaskTitle,
   respondBadRequest
 } from './validation.js';
+import { assertReadPermission } from '../db/authorization.js';
 
 export function registerApiRoutes(app: Express) {
   app.get('/api/tasks', async (_request: Request, response: Response, next: NextFunction) => {
@@ -56,10 +61,24 @@ export function registerApiRoutes(app: Express) {
   });
 
   app.get('/api/spaces', async (_request: Request, response: Response, next: NextFunction) => {
+    const sessionHeaders = parseOptionalMemberSessionHeaders(_request.headers as Record<string, unknown>);
+    if (!sessionHeaders.ok) {
+      respondBadRequest(response, sessionHeaders.message);
+      return;
+    }
+
     try {
-      const items = await listSpaces();
+      const sessionMember = sessionHeaders.value
+        ? await authenticateMember(sessionHeaders.value.memberId, sessionHeaders.value.token)
+        : null;
+      const items = await listSpaces(sessionMember);
       response.json({ items });
     } catch (error) {
+      if (error instanceof Error) {
+        respondBadRequest(response, error.message);
+        return;
+      }
+
       next(error);
     }
   });
@@ -73,10 +92,27 @@ export function registerApiRoutes(app: Express) {
         return;
       }
 
+      const sessionHeaders = parseMemberSessionHeaders(request.headers as Record<string, unknown>);
+      if (!sessionHeaders.ok) {
+        respondBadRequest(response, sessionHeaders.message);
+        return;
+      }
+
       try {
+        const sessionMember = await authenticateMemberForSpace(
+          spaceId.value,
+          sessionHeaders.value.memberId,
+          sessionHeaders.value.token
+        );
+        assertReadPermission(sessionMember, 'viewMembers');
         const items = await listSpaceMembers(spaceId.value);
         response.json({ items });
       } catch (error) {
+        if (error instanceof Error) {
+          respondBadRequest(response, error.message);
+          return;
+        }
+
         next(error);
       }
     }
@@ -91,10 +127,27 @@ export function registerApiRoutes(app: Express) {
         return;
       }
 
+      const sessionHeaders = parseMemberSessionHeaders(request.headers as Record<string, unknown>);
+      if (!sessionHeaders.ok) {
+        respondBadRequest(response, sessionHeaders.message);
+        return;
+      }
+
       try {
+        const sessionMember = await authenticateMemberForSpace(
+          spaceId.value,
+          sessionHeaders.value.memberId,
+          sessionHeaders.value.token
+        );
+        assertReadPermission(sessionMember, 'viewTransactions');
         const items = await listSpaceTransactions(spaceId.value);
         response.json({ items });
       } catch (error) {
+        if (error instanceof Error) {
+          respondBadRequest(response, error.message);
+          return;
+        }
+
         next(error);
       }
     }
@@ -141,6 +194,36 @@ export function registerApiRoutes(app: Express) {
     try {
       const item = await joinSpaceAsGuest(input.value);
       response.status(201).json(item);
+    } catch (error) {
+      if (error instanceof Error) {
+        respondBadRequest(response, error.message);
+        return;
+      }
+
+      next(error);
+    }
+  });
+
+  app.get('/api/spaces/by-code/:code/role-definitions', async (request: Request, response: Response, next: NextFunction) => {
+    const code = typeof request.params.code === 'string' ? request.params.code.trim() : '';
+    const sessionHeaders = parseOptionalMemberSessionHeaders(request.headers as Record<string, unknown>);
+
+    if (!code) {
+      respondBadRequest(response, 'code is required');
+      return;
+    }
+
+    if (!sessionHeaders.ok) {
+      respondBadRequest(response, sessionHeaders.message);
+      return;
+    }
+
+    try {
+      const sessionMember = sessionHeaders.value
+        ? await authenticateMember(sessionHeaders.value.memberId, sessionHeaders.value.token)
+        : null;
+      const items = await listSpaceRoleDefinitionsByCodeForMember(code, sessionMember);
+      response.json({ items });
     } catch (error) {
       if (error instanceof Error) {
         respondBadRequest(response, error.message);
@@ -200,10 +283,27 @@ export function registerApiRoutes(app: Express) {
         return;
       }
 
+      const sessionHeaders = parseMemberSessionHeaders(request.headers as Record<string, unknown>);
+      if (!sessionHeaders.ok) {
+        respondBadRequest(response, sessionHeaders.message);
+        return;
+      }
+
       try {
+        const sessionMember = await authenticateMemberForSpace(
+          spaceId.value,
+          sessionHeaders.value.memberId,
+          sessionHeaders.value.token
+        );
+        assertReadPermission(sessionMember, 'viewTransactionRequests');
         const items = await listSpaceTransactionRequests(spaceId.value);
         response.json({ items });
       } catch (error) {
+        if (error instanceof Error) {
+          respondBadRequest(response, error.message);
+          return;
+        }
+
         next(error);
       }
     }

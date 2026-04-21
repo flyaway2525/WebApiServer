@@ -32,6 +32,9 @@ export function buildJoinScreenProps(input: Pick<SharedScreenPropsInput, 'naviga
       joinError: input.spaces.joinError,
       joinNotice: input.spaces.joinNotice,
       joinForm: input.spaces.joinForm,
+      joinRoleDefinitions: input.spaces.joinRoleDefinitions,
+      loadingJoinRoleDefinitions: input.spaces.loadingJoinRoleDefinitions,
+      joinRoleDefinitionError: input.spaces.joinRoleDefinitionError,
       submittingJoin: input.spaces.submittingJoin
     },
     actions: {

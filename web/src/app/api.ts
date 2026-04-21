@@ -3,12 +3,21 @@ import {
   JoinResponse,
   Space,
   SpaceForm,
+  SpaceRoleDefinition,
   SpaceMember,
   SpaceSession,
   SpaceTransaction,
   SpaceTransactionRequest,
   apiBaseUrl
 } from './types';
+
+function createSessionHeaders(session: SpaceSession) {
+  return {
+    'Content-Type': 'application/json',
+    'x-space-member-id': String(session.memberId),
+    'x-space-session-token': session.token
+  };
+}
 
 async function parseJsonResponse<T>(response: Response, fallbackMessage: string) {
   if (!response.ok) {
@@ -19,23 +28,43 @@ async function parseJsonResponse<T>(response: Response, fallbackMessage: string)
   return (await response.json()) as T;
 }
 
-export async function fetchSpaces() {
-  const response = await fetch(`${apiBaseUrl}/api/spaces`);
+export async function fetchSpaces(session?: SpaceSession | null) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces`, {
+    headers: session ? createSessionHeaders(session) : undefined
+  });
   return parseJsonResponse<{ items: Space[] }>(response, 'スペース一覧の取得に失敗しました。');
 }
 
 export async function fetchSpaceMembers(spaceId: number) {
-  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/members`);
+  throw new Error('session is required');
+}
+
+export async function fetchAuthorizedSpaceMembers(spaceId: number, session: SpaceSession) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/members`, {
+    headers: createSessionHeaders(session)
+  });
   return parseJsonResponse<{ items: SpaceMember[] }>(response, 'メンバー一覧の取得に失敗しました。');
 }
 
 export async function fetchSpaceTransactions(spaceId: number) {
-  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transactions`);
+  throw new Error('session is required');
+}
+
+export async function fetchAuthorizedSpaceTransactions(spaceId: number, session: SpaceSession) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transactions`, {
+    headers: createSessionHeaders(session)
+  });
   return parseJsonResponse<{ items: SpaceTransaction[] }>(response, '取引履歴の取得に失敗しました。');
 }
 
 export async function fetchSpaceTransactionRequests(spaceId: number) {
-  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transaction-requests`);
+  throw new Error('session is required');
+}
+
+export async function fetchAuthorizedSpaceTransactionRequests(spaceId: number, session: SpaceSession) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/${spaceId}/transaction-requests`, {
+    headers: createSessionHeaders(session)
+  });
   return parseJsonResponse<{ items: SpaceTransactionRequest[] }>(response, '承認待ち取引の取得に失敗しました。');
 }
 
@@ -47,6 +76,7 @@ export async function createSpaceRequest(spaceForm: SpaceForm) {
       name: spaceForm.name,
       kind: spaceForm.kind,
       visibility: spaceForm.visibility,
+      rolePreset: spaceForm.rolePreset,
       initialPoints: Number(spaceForm.initialPoints),
       allowGuestJoin: spaceForm.allowGuestJoin,
       bankCanMint: spaceForm.kind === 'owner' ? spaceForm.bankCanMint : false,
@@ -57,14 +87,21 @@ export async function createSpaceRequest(spaceForm: SpaceForm) {
   return parseJsonResponse<CreateSpaceResponse>(response, 'スペースの作成に失敗しました。');
 }
 
-export async function joinSpaceRequest(code: string, displayName: string) {
+export async function joinSpaceRequest(code: string, displayName: string, roleKey?: string) {
   const response = await fetch(`${apiBaseUrl}/api/spaces/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, displayName })
+    body: JSON.stringify({ code, displayName, roleKey })
   });
 
   return parseJsonResponse<JoinResponse>(response, 'スペースへの参加に失敗しました。');
+}
+
+export async function fetchSpaceRoleDefinitionsByCode(code: string, session?: SpaceSession | null) {
+  const response = await fetch(`${apiBaseUrl}/api/spaces/by-code/${encodeURIComponent(code)}/role-definitions`, {
+    headers: session ? createSessionHeaders(session) : undefined
+  });
+  return parseJsonResponse<{ items: SpaceRoleDefinition[] }>(response, 'ロール一覧の取得に失敗しました。');
 }
 
 export async function createSpaceTransactionRequest(spaceId: number, payload: Record<string, unknown>) {
@@ -75,14 +112,6 @@ export async function createSpaceTransactionRequest(spaceId: number, payload: Re
   });
 
   return parseJsonResponse<SpaceTransaction>(response, '取引の作成に失敗しました。');
-}
-
-function createSessionHeaders(session: SpaceSession) {
-  return {
-    'Content-Type': 'application/json',
-    'x-space-member-id': String(session.memberId),
-    'x-space-session-token': session.token
-  };
 }
 
 export async function createAuthorizedSpaceTransactionRequest(

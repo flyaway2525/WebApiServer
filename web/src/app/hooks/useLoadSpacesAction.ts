@@ -1,5 +1,5 @@
 import { fetchSpaces } from '../api';
-import { Space } from '../types';
+import { Space, SpaceSession } from '../types';
 
 type UseLoadSpacesActionOptions = {
   setLoadingSpaces: (value: boolean) => void;
@@ -9,12 +9,12 @@ type UseLoadSpacesActionOptions = {
 };
 
 export function useLoadSpacesAction(options: UseLoadSpacesActionOptions) {
-  async function loadSpaces() {
+  async function loadSpaces(memberSession?: SpaceSession | null) {
     options.setLoadingSpaces(true);
     options.setSpacesError(null);
 
     try {
-      const data = await fetchSpaces();
+      const data = await fetchSpaces(memberSession);
       options.setSpaces(data.items);
       options.setSelectedSpaceId((current) => {
         if (current && data.items.some((item) => item.id === current)) {

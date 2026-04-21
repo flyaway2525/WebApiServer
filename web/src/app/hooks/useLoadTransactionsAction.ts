@@ -1,5 +1,5 @@
-import { fetchSpaceTransactions } from '../api';
-import { SpaceTransaction } from '../types';
+import { fetchAuthorizedSpaceTransactions } from '../api';
+import { SpaceSession, SpaceTransaction } from '../types';
 
 type UseLoadTransactionsActionOptions = {
   setLoadingTransactions: (value: boolean) => void;
@@ -8,12 +8,16 @@ type UseLoadTransactionsActionOptions = {
 };
 
 export function useLoadTransactionsAction(options: UseLoadTransactionsActionOptions) {
-  async function loadTransactions(spaceId: number) {
+  async function loadTransactions(spaceId: number, memberSession: SpaceSession | null) {
     options.setLoadingTransactions(true);
     options.setTransactionError(null);
 
     try {
-      const data = await fetchSpaceTransactions(spaceId);
+      if (!memberSession) {
+        throw new Error('取引履歴を取得するには参加セッションが必要です。');
+      }
+
+      const data = await fetchAuthorizedSpaceTransactions(spaceId, memberSession);
       options.setTransactions(data.items);
     } catch (error) {
       options.setTransactionError(error instanceof Error ? error.message : '取引履歴の取得に失敗しました。');

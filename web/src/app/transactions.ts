@@ -7,6 +7,7 @@ import {
   TransactionForm,
   TransactionKind
 } from './types';
+import { hasCapability } from './roles';
 
 type PendingTransactionRequestPayload = {
   kind: TransactionKind;
@@ -229,7 +230,7 @@ export function canResolveTransactionRequest(
     return false;
   }
 
-  if (authenticatedMember.role === 'host') {
+  if (hasCapability(authenticatedMember, 'resolveTransactionRequest')) {
     return true;
   }
 

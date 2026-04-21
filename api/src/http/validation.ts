@@ -6,6 +6,7 @@ import {
   CreateSpaceTransactionRequestInput,
   JoinSpaceInput,
   RejectTransactionRequestInput,
+  SpaceRolePresetKey,
   SpaceKind,
   SpaceState,
   SpaceVisibility,
@@ -93,6 +94,22 @@ export function parseMemberSessionHeaders(headers: Record<string, unknown>): Val
   };
 }
 
+export function parseOptionalMemberSessionHeaders(
+  headers: Record<string, unknown>
+): ValidationResult<{ memberId: number; token: string } | null> {
+  const hasMemberId = headers['x-space-member-id'] != null && String(headers['x-space-member-id']).trim() !== '';
+  const rawToken = headers['x-space-session-token'];
+  const hasToken =
+    (typeof rawToken === 'string' && rawToken.trim() !== '') ||
+    (Array.isArray(rawToken) && String(rawToken[0] ?? '').trim() !== '');
+
+  if (!hasMemberId && !hasToken) {
+    return { ok: true, value: null };
+  }
+
+  return parseMemberSessionHeaders(headers);
+}
+
 export function parseTaskTitle(body: unknown): ValidationResult<string> {
   const title = typeof (body as { title?: unknown } | null)?.title === 'string'
     ? (body as { title: string }).title.trim()
@@ -115,6 +132,7 @@ export function parseCreateSpaceInput(body: unknown): ValidationResult<CreateSpa
     typeof requestBody.hostDisplayName === 'string' ? requestBody.hostDisplayName.trim() : '';
   const allowGuestJoin = Boolean(requestBody.allowGuestJoin);
   const bankCanMint = Boolean(requestBody.bankCanMint);
+  const rolePreset = requestBody.rolePreset;
 
   if (!name) {
     return { ok: false, message: 'name is required' };
@@ -136,6 +154,10 @@ export function parseCreateSpaceInput(body: unknown): ValidationResult<CreateSpa
     return { ok: false, message: 'hostDisplayName is required' };
   }
 
+  if (rolePreset != null && rolePreset !== 'owner-bank' && rolePreset !== 'standard-room' && rolePreset !== 'tournament-room') {
+    return { ok: false, message: 'rolePreset must be owner-bank, standard-room, or tournament-room' };
+  }
+
   return {
     ok: true,
     value: {
@@ -145,7 +167,8 @@ export function parseCreateSpaceInput(body: unknown): ValidationResult<CreateSpa
       initialPoints,
       allowGuestJoin,
       bankCanMint: kind === 'owner' ? bankCanMint : false,
-      hostDisplayName
+      hostDisplayName,
+      rolePreset: rolePreset as SpaceRolePresetKey | undefined
     }
   };
 }
@@ -154,6 +177,7 @@ export function parseJoinSpaceInput(body: unknown): ValidationResult<JoinSpaceIn
   const requestBody = (body ?? {}) as Record<string, unknown>;
   const code = typeof requestBody.code === 'string' ? requestBody.code.trim() : '';
   const displayName = typeof requestBody.displayName === 'string' ? requestBody.displayName.trim() : '';
+  const roleKey = typeof requestBody.roleKey === 'string' ? requestBody.roleKey.trim() : '';
 
   if (!code) {
     return { ok: false, message: 'code is required' };
@@ -165,7 +189,7 @@ export function parseJoinSpaceInput(body: unknown): ValidationResult<JoinSpaceIn
 
   return {
     ok: true,
-    value: { code, displayName }
+    value: { code, displayName, roleKey: roleKey || undefined }
   };
 }
 

@@ -1,5 +1,5 @@
 import { CreateScreenProps } from '../createScreenProps';
-import { SpaceKind, SpaceVisibility } from '../types';
+import { SpaceKind, SpaceVisibility, rolePresetOptions } from '../types';
 
 export function CreateScreen(props: CreateScreenProps) {
   const { state, actions } = props;
@@ -39,6 +39,19 @@ export function CreateScreen(props: CreateScreenProps) {
                 <select value={state.spaceForm.kind} onChange={(event) => actions.onModeChange(event.target.value as SpaceKind)}>
                   <option value="owner">owner</option>
                   <option value="room">room</option>
+                </select>
+              </label>
+              <label>
+                ロールプリセット
+                <select
+                  value={state.spaceForm.rolePreset}
+                  onChange={(event) => actions.onFieldChange('rolePreset', event.target.value as typeof state.spaceForm.rolePreset)}
+                >
+                  {rolePresetOptions.filter((option) => option.kind === state.spaceForm.kind).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -100,6 +113,7 @@ export function CreateScreen(props: CreateScreenProps) {
           <ul className="feature-list">
             <li>owner: BANK 起点で配布しやすい構成</li>
             <li>room: 参加者中心で始めやすい構成</li>
+            <li>ロールプリセットで player や spectator を切り替え</li>
             <li>公開範囲とゲスト参加可否を作成時に固定</li>
             <li>成功時は Room へ遷移</li>
           </ul>

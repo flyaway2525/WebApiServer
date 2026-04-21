@@ -1,6 +1,6 @@
 import { Dispatch, FormEvent, SetStateAction } from 'react';
 
-import { InlineNotice, JoinForm, Screen, Space, SpaceForm, SpaceKind, SpaceMember, SpaceTransaction, SpaceTransactionRequest, TransactionForm } from '../types';
+import { InlineNotice, JoinForm, Screen, Space, SpaceForm, SpaceKind, SpaceMember, SpaceRoleDefinition, SpaceTransaction, SpaceTransactionRequest, TransactionForm } from '../types';
 
 export type PointManagerNavigationViewModel = {
   screen: Screen;
@@ -17,14 +17,17 @@ export type PointManagerSpacesViewModel = {
   guestSessionMember: SpaceMember | null;
   shareJoinLink: string;
   members: SpaceMember[];
+  joinRoleDefinitions: SpaceRoleDefinition[];
   loadingSpaces: boolean;
   loadingMembers: boolean;
+  loadingJoinRoleDefinitions: boolean;
   submittingSpace: boolean;
   submittingJoin: boolean;
   spacesError: string | null;
   createError: string | null;
   joinError: string | null;
   memberError: string | null;
+  joinRoleDefinitionError: string | null;
   joinNotice: InlineNotice | null;
   spaceForm: SpaceForm;
   joinForm: JoinForm;

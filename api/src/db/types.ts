@@ -2,6 +2,17 @@ export type SpaceKind = 'owner' | 'room';
 export type SpaceVisibility = 'private' | 'members' | 'public';
 export type RankingMode = 'manual' | 'polling';
 export type SpaceRole = 'host' | 'bank' | 'member';
+export type RoleCapabilityKey =
+  | 'viewMembers'
+  | 'viewRanking'
+  | 'viewTransactions'
+  | 'viewTransactionRequests'
+  | 'createTransaction'
+  | 'createTransactionRequest'
+  | 'resolveTransactionRequest'
+  | 'manageSpaceState'
+  | 'mintPoints';
+export type SpaceRolePresetKey = 'owner-bank' | 'standard-room' | 'tournament-room';
 export type SpaceState = 'active' | 'closed' | 'archived';
 export type TransactionKind = 'grant' | 'transfer' | 'consume';
 export type TransactionActorType = 'member' | 'system' | 'qr';
@@ -37,10 +48,37 @@ export type SpaceMemberRecord = {
   spaceId: number;
   displayName: string;
   role: SpaceRole;
+  roleDefinitionId: number | null;
+  roleKey: string;
+  roleLabel: string;
+  capabilities: RoleCapabilityKey[];
   isGuest: boolean;
   points: number;
   canTransfer: boolean;
   createdAt: string;
+};
+
+export type SpaceRoleDefinitionRecord = {
+  id: number;
+  spaceId: number;
+  key: string;
+  label: string;
+  description: string | null;
+  legacyRole: SpaceRole;
+  maxParticipants: number | null;
+  isSystem: boolean;
+  capabilities: RoleCapabilityKey[];
+  createdAt: string;
+};
+
+export type CreateSpaceRoleDefinitionInput = {
+  key: string;
+  label: string;
+  description?: string;
+  legacyRole: SpaceRole;
+  maxParticipants?: number;
+  isSystem?: boolean;
+  capabilities: RoleCapabilityKey[];
 };
 
 export type CreateSpaceInput = {
@@ -51,11 +89,13 @@ export type CreateSpaceInput = {
   allowGuestJoin: boolean;
   bankCanMint: boolean;
   hostDisplayName: string;
+  rolePreset?: SpaceRolePresetKey;
 };
 
 export type JoinSpaceInput = {
   code: string;
   displayName: string;
+  roleKey?: string;
 };
 
 export type SpaceSessionRecord = {

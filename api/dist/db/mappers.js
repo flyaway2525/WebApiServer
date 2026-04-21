@@ -1,6 +1,18 @@
 function toBoolean(value) {
     return Number(value ?? 0) === 1;
 }
+function parseCapabilities(value) {
+    if (typeof value !== 'string' || !value.trim()) {
+        return [];
+    }
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+    }
+    catch {
+        return [];
+    }
+}
 export function mapSpaceRow(row) {
     return {
         id: Number(row.id),
@@ -21,14 +33,33 @@ export function mapSpaceRow(row) {
     };
 }
 export function mapMemberRow(row) {
+    const role = row.role;
     return {
         id: Number(row.id),
         spaceId: Number(row.spaceId),
         displayName: String(row.displayName),
-        role: row.role,
+        role,
+        roleDefinitionId: row.roleDefinitionId == null ? null : Number(row.roleDefinitionId),
+        roleKey: row.roleKey == null ? role : String(row.roleKey),
+        roleLabel: row.roleLabel == null ? role : String(row.roleLabel),
+        capabilities: parseCapabilities(row.capabilitiesJson),
         isGuest: toBoolean(row.isGuest),
         points: Number(row.points),
         canTransfer: toBoolean(row.canTransfer),
+        createdAt: String(row.createdAt)
+    };
+}
+export function mapRoleDefinitionRow(row) {
+    return {
+        id: Number(row.id),
+        spaceId: Number(row.spaceId),
+        key: String(row.key),
+        label: String(row.label),
+        description: row.description == null ? null : String(row.description),
+        legacyRole: row.legacyRole,
+        maxParticipants: row.maxParticipants == null ? null : Number(row.maxParticipants),
+        isSystem: toBoolean(row.isSystem),
+        capabilities: parseCapabilities(row.capabilitiesJson),
         createdAt: String(row.createdAt)
     };
 }

@@ -7,6 +7,7 @@ import {
   SpaceForm,
   SpaceKind,
   SpaceMember,
+  SpaceRoleDefinition,
   SpaceSession,
   initialJoinForm,
   initialSpaceForm
@@ -18,12 +19,15 @@ export function useSpaceState() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
   const [guestSessionMember, setGuestSessionMember] = useState<SpaceMember | null>(null);
   const [memberSession, setMemberSession] = useState<SpaceSession | null>(null);
+  const [joinRoleDefinitions, setJoinRoleDefinitions] = useState<SpaceRoleDefinition[]>([]);
   const [spaceForm, setSpaceForm] = useState(initialSpaceForm);
   const [joinForm, setJoinForm] = useState(initialJoinForm);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [loadingJoinRoleDefinitions, setLoadingJoinRoleDefinitions] = useState(false);
   const [spacesError, setSpacesError] = useState<string | null>(null);
   const [memberError, setMemberError] = useState<string | null>(null);
+  const [joinRoleDefinitionError, setJoinRoleDefinitionError] = useState<string | null>(null);
   const [joinNotice, setJoinNotice] = useState<InlineNotice | null>(null);
 
   const selectedSpace = spaces.find((space) => space.id === selectedSpaceId) ?? null;
@@ -43,6 +47,7 @@ export function useSpaceState() {
   function handleModeChange(nextKind: SpaceKind) {
     updateSpaceForm('kind', nextKind);
     updateSpaceForm('visibility', nextKind === 'owner' ? 'members' : 'private');
+    updateSpaceForm('rolePreset', nextKind === 'owner' ? 'owner-bank' : 'standard-room');
     updateSpaceForm('bankCanMint', nextKind === 'owner');
     updateSpaceForm('initialPoints', nextKind === 'owner' ? '10000' : '8000');
   }
@@ -59,6 +64,8 @@ export function useSpaceState() {
     setGuestSessionMember,
     memberSession,
     setMemberSession,
+    joinRoleDefinitions,
+    setJoinRoleDefinitions,
     recentSpaces,
     shareJoinLink,
     spaceForm,
@@ -69,10 +76,14 @@ export function useSpaceState() {
     setLoadingSpaces,
     loadingMembers,
     setLoadingMembers,
+    loadingJoinRoleDefinitions,
+    setLoadingJoinRoleDefinitions,
     spacesError,
     setSpacesError,
     memberError,
     setMemberError,
+    joinRoleDefinitionError,
+    setJoinRoleDefinitionError,
     joinNotice,
     setJoinNotice,
     updateSpaceForm,

@@ -1,11 +1,14 @@
 import { FormEventHandler } from 'react';
 
-import { InlineNotice, JoinForm } from './types';
+import { InlineNotice, JoinForm, SpaceRoleDefinition } from './types';
 
 export type JoinScreenState = {
   joinError: string | null;
   joinNotice: InlineNotice | null;
   joinForm: JoinForm;
+  joinRoleDefinitions: SpaceRoleDefinition[];
+  loadingJoinRoleDefinitions: boolean;
+  joinRoleDefinitionError: string | null;
   submittingJoin: boolean;
 };
 

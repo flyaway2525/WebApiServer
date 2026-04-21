@@ -2,7 +2,17 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
 import { getClient } from './client.js';
-import { insertMember, insertSpace, insertTransactionEntry } from './lookups.js';
+import { insertMember, insertRoleDefinition, insertSpace, insertTransactionEntry } from './lookups.js';
+import { buildRoleDefinitions } from './roleDefinitions.js';
+async function seedRoleDefinitions(spaceId, kind, rolePreset) {
+    const definitions = buildRoleDefinitions(kind, rolePreset);
+    const created = new Map();
+    for (const definition of definitions) {
+        const id = await insertRoleDefinition(spaceId, definition);
+        created.set(definition.key, id);
+    }
+    return created;
+}
 async function seedDefaultSpaces() {
     const ownerSpaceId = await insertSpace({
         code: 'BANK01',
@@ -14,9 +24,14 @@ async function seedDefaultSpaces() {
         bankCanMint: true,
         hostDisplayName: 'Event Owner'
     });
+    const ownerRoleIds = await seedRoleDefinitions(ownerSpaceId, 'owner', 'owner-bank');
     const ownerHostMemberId = await insertMember(ownerSpaceId, {
         displayName: 'Event Owner',
         role: 'host',
+        roleDefinitionId: ownerRoleIds.get('host') ?? null,
+        roleKey: 'host',
+        roleLabel: 'Host',
+        capabilities: buildRoleDefinitions('owner', 'owner-bank').find((item) => item.key === 'host')?.capabilities ?? [],
         isGuest: false,
         points: 0,
         canTransfer: true
@@ -24,6 +39,10 @@ async function seedDefaultSpaces() {
     const bankMemberId = await insertMember(ownerSpaceId, {
         displayName: 'BANK',
         role: 'bank',
+        roleDefinitionId: ownerRoleIds.get('bank') ?? null,
+        roleKey: 'bank',
+        roleLabel: 'BANK',
+        capabilities: buildRoleDefinitions('owner', 'owner-bank').find((item) => item.key === 'bank')?.capabilities ?? [],
         isGuest: false,
         points: 10000,
         canTransfer: true
@@ -31,6 +50,10 @@ async function seedDefaultSpaces() {
     const guestAlphaId = await insertMember(ownerSpaceId, {
         displayName: 'Guest Alpha',
         role: 'member',
+        roleDefinitionId: ownerRoleIds.get('member') ?? null,
+        roleKey: 'member',
+        roleLabel: 'Member',
+        capabilities: buildRoleDefinitions('owner', 'owner-bank').find((item) => item.key === 'member')?.capabilities ?? [],
         isGuest: true,
         points: 1200,
         canTransfer: true
@@ -61,9 +84,14 @@ async function seedDefaultSpaces() {
         bankCanMint: false,
         hostDisplayName: 'Host Player'
     });
+    const roomRoleIds = await seedRoleDefinitions(roomSpaceId, 'room', 'standard-room');
     const hostMemberId = await insertMember(roomSpaceId, {
         displayName: 'Host Player',
         role: 'host',
+        roleDefinitionId: roomRoleIds.get('host') ?? null,
+        roleKey: 'host',
+        roleLabel: 'Host',
+        capabilities: buildRoleDefinitions('room', 'standard-room').find((item) => item.key === 'host')?.capabilities ?? [],
         isGuest: false,
         points: 8000,
         canTransfer: true
@@ -71,6 +99,10 @@ async function seedDefaultSpaces() {
     const guestBetaId = await insertMember(roomSpaceId, {
         displayName: 'Guest Beta',
         role: 'member',
+        roleDefinitionId: roomRoleIds.get('member') ?? null,
+        roleKey: 'member',
+        roleLabel: 'Member',
+        capabilities: buildRoleDefinitions('room', 'standard-room').find((item) => item.key === 'member')?.capabilities ?? [],
         isGuest: true,
         points: 8000,
         canTransfer: true
@@ -127,18 +159,36 @@ export async function initializeDatabase() {
     )
   `);
     await client.execute(`
+    CREATE TABLE IF NOT EXISTS space_role_definitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      space_id INTEGER NOT NULL,
+      role_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      description TEXT,
+      legacy_role TEXT NOT NULL DEFAULT 'member',
+      max_participants INTEGER,
+      is_system INTEGER NOT NULL DEFAULT 0,
+      capabilities_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (space_id, role_key),
+      FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+    )
+  `);
+    await client.execute(`
     CREATE TABLE IF NOT EXISTS space_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       space_id INTEGER NOT NULL,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('host', 'bank', 'member')),
+      role_definition_id INTEGER,
       is_guest INTEGER NOT NULL DEFAULT 1,
       points INTEGER NOT NULL DEFAULT 0,
       can_transfer INTEGER NOT NULL DEFAULT 1,
       session_token TEXT,
       session_created_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+      FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+      FOREIGN KEY (role_definition_id) REFERENCES space_role_definitions(id) ON DELETE SET NULL
     )
   `);
     await client.execute(`
@@ -199,11 +249,15 @@ export async function initializeDatabase() {
     const memberColumns = await client.execute('PRAGMA table_info(space_members)');
     const hasSessionToken = memberColumns.rows.some((row) => String(row.name) === 'session_token');
     const hasSessionCreatedAt = memberColumns.rows.some((row) => String(row.name) === 'session_created_at');
+    const hasRoleDefinitionId = memberColumns.rows.some((row) => String(row.name) === 'role_definition_id');
     if (!hasSessionToken) {
         await client.execute('ALTER TABLE space_members ADD COLUMN session_token TEXT');
     }
     if (!hasSessionCreatedAt) {
         await client.execute('ALTER TABLE space_members ADD COLUMN session_created_at TEXT');
+    }
+    if (!hasRoleDefinitionId) {
+        await client.execute('ALTER TABLE space_members ADD COLUMN role_definition_id INTEGER');
     }
     const transactionColumns = await client.execute('PRAGMA table_info(space_transactions)');
     const hasActorMemberId = transactionColumns.rows.some((row) => String(row.name) === 'actor_member_id');
@@ -242,5 +296,29 @@ export async function initializeDatabase() {
     const spaceCount = Number(existingSpaces.rows[0]?.count ?? 0);
     if (spaceCount === 0) {
         await seedDefaultSpaces();
+        return;
+    }
+    const existingRoleDefinitions = await client.execute('SELECT COUNT(*) AS count FROM space_role_definitions');
+    const roleDefinitionCount = Number(existingRoleDefinitions.rows[0]?.count ?? 0);
+    if (roleDefinitionCount === 0) {
+        const spaces = await client.execute('SELECT id, kind FROM spaces ORDER BY id ASC');
+        for (const row of spaces.rows) {
+            const spaceId = Number(row.id);
+            const kind = String(row.kind) === 'owner' ? 'owner' : 'room';
+            const roleIds = await seedRoleDefinitions(spaceId, kind, kind === 'owner' ? 'owner-bank' : 'standard-room');
+            const members = await client.execute({
+                sql: 'SELECT id, role FROM space_members WHERE space_id = ?',
+                args: [spaceId]
+            });
+            for (const memberRow of members.rows) {
+                const legacyRole = String(memberRow.role);
+                const roleKey = legacyRole === 'host' || legacyRole === 'bank' ? legacyRole : 'member';
+                const roleDefinitionId = roleIds.get(roleKey) ?? null;
+                await client.execute({
+                    sql: 'UPDATE space_members SET role_definition_id = ? WHERE id = ?',
+                    args: [roleDefinitionId, Number(memberRow.id)]
+                });
+            }
+        }
     }
 }

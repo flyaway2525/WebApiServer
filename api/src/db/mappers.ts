@@ -1,9 +1,11 @@
 import {
+  RoleCapabilityKey,
   RankingMode,
   SpaceKind,
   SpaceMemberRecord,
   SpaceRecord,
   SpaceRole,
+  SpaceRoleDefinitionRecord,
   SpaceState,
   SpaceTransactionRecord,
   SpaceTransactionRequestRecord,
@@ -15,6 +17,19 @@ import {
 
 function toBoolean(value: unknown) {
   return Number(value ?? 0) === 1;
+}
+
+function parseCapabilities(value: unknown): RoleCapabilityKey[] {
+  if (typeof value !== 'string' || !value.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is RoleCapabilityKey => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 export function mapSpaceRow(row: Record<string, unknown>): SpaceRecord {
@@ -38,14 +53,35 @@ export function mapSpaceRow(row: Record<string, unknown>): SpaceRecord {
 }
 
 export function mapMemberRow(row: Record<string, unknown>): SpaceMemberRecord {
+  const role = row.role as SpaceRole;
+
   return {
     id: Number(row.id),
     spaceId: Number(row.spaceId),
     displayName: String(row.displayName),
-    role: row.role as SpaceRole,
+    role,
+    roleDefinitionId: row.roleDefinitionId == null ? null : Number(row.roleDefinitionId),
+    roleKey: row.roleKey == null ? role : String(row.roleKey),
+    roleLabel: row.roleLabel == null ? role : String(row.roleLabel),
+    capabilities: parseCapabilities(row.capabilitiesJson),
     isGuest: toBoolean(row.isGuest),
     points: Number(row.points),
     canTransfer: toBoolean(row.canTransfer),
+    createdAt: String(row.createdAt)
+  };
+}
+
+export function mapRoleDefinitionRow(row: Record<string, unknown>): SpaceRoleDefinitionRecord {
+  return {
+    id: Number(row.id),
+    spaceId: Number(row.spaceId),
+    key: String(row.key),
+    label: String(row.label),
+    description: row.description == null ? null : String(row.description),
+    legacyRole: row.legacyRole as SpaceRole,
+    maxParticipants: row.maxParticipants == null ? null : Number(row.maxParticipants),
+    isSystem: toBoolean(row.isSystem),
+    capabilities: parseCapabilities(row.capabilitiesJson),
     createdAt: String(row.createdAt)
   };
 }

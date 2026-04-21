@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useEffect } from 'react';
 
+import { fetchSpaceRoleDefinitionsByCode } from '../api';
 import { useCreateSpaceAction } from './useCreateSpaceAction';
 import { useJoinSpaceAction } from './useJoinSpaceAction';
 import { useLoadMembersAction } from './useLoadMembersAction';
@@ -14,6 +15,7 @@ import {
   SpaceForm,
   SpaceKind,
   SpaceMember,
+  SpaceRoleDefinition,
   Screen,
   extractSpaceCode,
   initialSpaceForm,
@@ -28,18 +30,21 @@ export type SpacesController = {
   setSelectedSpaceId: Dispatch<SetStateAction<number | null>>;
   guestSessionMember: SpaceMember | null;
   memberSession: { memberId: number; spaceId: number; token: string; issuedAt: string } | null;
+  joinRoleDefinitions: SpaceRoleDefinition[];
   recentSpaces: Space[];
   shareJoinLink: string;
   spaceForm: SpaceForm;
   joinForm: JoinForm;
   loadingSpaces: boolean;
   loadingMembers: boolean;
+  loadingJoinRoleDefinitions: boolean;
   submittingSpace: boolean;
   submittingJoin: boolean;
   spacesError: string | null;
   createError: string | null;
   joinError: string | null;
   memberError: string | null;
+  joinRoleDefinitionError: string | null;
   joinNotice: InlineNotice | null;
   loadSpaces: () => Promise<void>;
   loadMembers: (spaceId: number) => Promise<void>;
@@ -79,7 +84,7 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
         initialPoints: String(created.space.initialPoints),
         bankCanMint: created.space.kind === 'owner'
       });
-      await loadSpacesAction.loadSpaces();
+      await loadSpacesAction.loadSpaces(created.session);
     }
   });
 
@@ -88,17 +93,18 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
     onJoined: async (joined: JoinResponse) => {
       state.setGuestSessionMember(joined.member);
       state.setMemberSession(joined.session);
-      state.setJoinForm((current) => ({ ...current, code: '', displayName: '' }));
+      state.setJoinForm((current) => ({ ...current, code: '', displayName: '', roleKey: '' }));
+      state.setJoinRoleDefinitions([]);
       state.setJoinNotice({
         tone: 'success',
         message: `${joined.space.name} に ${joined.member.displayName} として参加しました。`
       });
-      await loadSpacesAction.loadSpaces();
+      await loadSpacesAction.loadSpaces(joined.session);
     }
   });
 
   useEffect(() => {
-    void loadSpacesAction.loadSpaces();
+    void loadSpacesAction.loadSpaces(state.memberSession);
 
     const urlCode = new URL(window.location.href).searchParams.get('code');
     if (urlCode) {
@@ -111,6 +117,58 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
       setScreen('join');
     }
   }, [setScreen]);
+
+  useEffect(() => {
+    const normalizedCode = normalizeSpaceCode(state.joinForm.code);
+
+    if (!normalizedCode) {
+      state.setJoinRoleDefinitions([]);
+      state.setJoinRoleDefinitionError(null);
+      state.setJoinForm((current) => (current.roleKey ? { ...current, roleKey: '' } : current));
+      return;
+    }
+
+    let disposed = false;
+
+    async function loadJoinRoleDefinitions() {
+      state.setLoadingJoinRoleDefinitions(true);
+      state.setJoinRoleDefinitionError(null);
+
+      try {
+        const data = await fetchSpaceRoleDefinitionsByCode(normalizedCode, state.memberSession);
+        if (disposed) {
+          return;
+        }
+
+        const joinableRoles = data.items.filter((item) => !item.isSystem);
+        state.setJoinRoleDefinitions(joinableRoles);
+        state.setJoinForm((current) => {
+          if (joinableRoles.some((item) => item.key === current.roleKey)) {
+            return current;
+          }
+
+          return { ...current, roleKey: joinableRoles[0]?.key ?? '' };
+        });
+      } catch (error) {
+        if (disposed) {
+          return;
+        }
+
+        state.setJoinRoleDefinitions([]);
+        state.setJoinRoleDefinitionError(error instanceof Error ? error.message : '参加ロールの取得に失敗しました。');
+      } finally {
+        if (!disposed) {
+          state.setLoadingJoinRoleDefinitions(false);
+        }
+      }
+    }
+
+    void loadJoinRoleDefinitions();
+
+    return () => {
+      disposed = true;
+    };
+  }, [state.joinForm.code, state.memberSession]);
 
   function applyJoinCodeFromQrPayload() {
     const code = extractSpaceCode(state.joinForm.qrPayload);
@@ -139,21 +197,24 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
     setSelectedSpaceId: state.setSelectedSpaceId,
     guestSessionMember: state.guestSessionMember,
     memberSession: state.memberSession,
+    joinRoleDefinitions: state.joinRoleDefinitions,
     recentSpaces: state.recentSpaces,
     shareJoinLink: state.shareJoinLink,
     spaceForm: state.spaceForm,
     joinForm: state.joinForm,
     loadingSpaces: state.loadingSpaces,
     loadingMembers: state.loadingMembers,
+    loadingJoinRoleDefinitions: state.loadingJoinRoleDefinitions,
     submittingSpace: createSpaceAction.submittingSpace,
     submittingJoin: joinSpaceAction.submittingJoin,
     spacesError: state.spacesError,
     createError: createSpaceAction.createError,
     joinError: joinSpaceAction.joinError,
     memberError: state.memberError,
+    joinRoleDefinitionError: state.joinRoleDefinitionError,
     joinNotice: state.joinNotice,
-    loadSpaces: loadSpacesAction.loadSpaces,
-    loadMembers: loadMembersAction.loadMembers,
+    loadSpaces: () => loadSpacesAction.loadSpaces(state.memberSession),
+    loadMembers: (spaceId) => loadMembersAction.loadMembers(spaceId, state.memberSession),
     updateSpaceForm: state.updateSpaceForm,
     updateJoinForm: state.updateJoinForm,
     handleModeChange: state.handleModeChange,

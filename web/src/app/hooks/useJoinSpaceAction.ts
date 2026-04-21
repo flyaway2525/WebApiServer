@@ -24,11 +24,16 @@ export function useJoinSpaceAction(options: UseJoinSpaceActionOptions) {
       return null;
     }
 
+    if (!options.joinForm.roleKey.trim()) {
+      setJoinError('参加ロールを選択してください。');
+      return null;
+    }
+
     setSubmittingJoin(true);
     setJoinError(null);
 
     try {
-      const joined = await joinSpaceRequest(normalizedCode, options.joinForm.displayName);
+      const joined = await joinSpaceRequest(normalizedCode, options.joinForm.displayName, options.joinForm.roleKey);
       await options.onJoined(joined);
       return joined;
     } catch (error) {

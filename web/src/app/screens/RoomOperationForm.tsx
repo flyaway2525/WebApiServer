@@ -8,6 +8,7 @@ import {
   TransactionKind,
   TransactionSubmissionMode
 } from '../types';
+import { hasCapability } from '../roles';
 
 type RoomOperationFormProps = {
   selectedSpace: Space;
@@ -24,6 +25,9 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
   const isSpaceActive = props.selectedSpace.state === 'active';
   const isRequestMode = props.transactionForm.submissionMode === 'request';
   const hostMember = props.members.find((member) => member.role === 'host') ?? null;
+  const canCreateDirectTransaction = hasCapability(props.currentSessionMember, 'createTransaction');
+  const canCreateTransactionRequest = hasCapability(props.currentSessionMember, 'createTransactionRequest');
+  const canSubmitAnything = canCreateDirectTransaction || canCreateTransactionRequest;
   const requestRules = [
     `申請者は現在の session メンバー${props.currentSessionMember ? ` (${props.currentSessionMember.displayName})` : ''}として記録されます。`,
     hostMember
@@ -34,6 +38,15 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
 
   if (props.currentSessionMember?.role !== 'host') {
     requestRules.push('自分の残高をそのまま使う操作は申請ではなく「即時記録」を使ってください。');
+  }
+
+  if (!canSubmitAnything) {
+    return (
+      <article className="glass-card accent-card transaction-card room-operation-card">
+        <h2>ポイント操作</h2>
+        <p className="muted">現在のロール ({props.currentSessionMember?.roleLabel ?? 'unknown'}) ではポイント操作や申請を作成できません。</p>
+      </article>
+    );
   }
 
   return (
@@ -51,7 +64,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
           <button
             type="button"
             className={props.transactionForm.submissionMode === 'direct' ? 'mode-toggle-button is-active' : 'mode-toggle-button'}
-            disabled={!isSpaceActive}
+            disabled={!isSpaceActive || !canCreateDirectTransaction}
             onClick={() => props.onTransactionFieldChange('submissionMode', 'direct' as TransactionSubmissionMode)}
           >
             即時記録
@@ -59,7 +72,7 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
           <button
             type="button"
             className={props.transactionForm.submissionMode === 'request' ? 'mode-toggle-button is-active' : 'mode-toggle-button'}
-            disabled={!isSpaceActive}
+            disabled={!isSpaceActive || !canCreateTransactionRequest}
             onClick={() => props.onTransactionFieldChange('submissionMode', 'request' as TransactionSubmissionMode)}
           >
             承認申請
@@ -176,7 +189,14 @@ export function RoomOperationForm(props: RoomOperationFormProps) {
             placeholder={isRequestMode ? '例: host approval needed' : '例: Round 1 reward'}
           />
         </label>
-        <button type="submit" disabled={props.submittingTransaction || !isSpaceActive}>
+        <button
+          type="submit"
+          disabled={
+            props.submittingTransaction ||
+            !isSpaceActive ||
+            (isRequestMode ? !canCreateTransactionRequest : !canCreateDirectTransaction)
+          }
+        >
           {props.submittingTransaction ? '送信中...' : isRequestMode ? '承認申請を送る' : '取引を記録する'}
         </button>
       </form>

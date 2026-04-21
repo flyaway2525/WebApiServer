@@ -27,6 +27,7 @@ export function JoinScreen(props: JoinScreenProps) {
           </div>
           {state.joinError ? <p className="error-banner">{state.joinError}</p> : null}
           {state.joinNotice ? <p className={`status-banner status-${state.joinNotice.tone}`}>{state.joinNotice.message}</p> : null}
+          {state.joinRoleDefinitionError ? <p className="error-banner">{state.joinRoleDefinitionError}</p> : null}
           <form onSubmit={actions.onSubmit} className="space-form">
             <label>
               スペースコード
@@ -44,6 +45,23 @@ export function JoinScreen(props: JoinScreenProps) {
                 placeholder="例: Guest Player"
               />
             </label>
+            <label>
+              参加ロール
+              <select
+                value={state.joinForm.roleKey}
+                disabled={state.loadingJoinRoleDefinitions || state.joinRoleDefinitions.length === 0}
+                onChange={(event) => actions.onFieldChange('roleKey', event.target.value)}
+              >
+                <option value="">選択してください</option>
+                {state.joinRoleDefinitions.map((role) => (
+                  <option key={role.key} value={role.key}>
+                    {role.label}
+                    {role.maxParticipants != null ? ` (${role.maxParticipants}人まで)` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {state.loadingJoinRoleDefinitions ? <p className="muted">参加ロールを読み込み中...</p> : null}
             <div className="inline-fields action-row">
               <button type="submit" disabled={state.submittingJoin}>
                 {state.submittingJoin ? '参加中...' : 'スペースに参加する'}
