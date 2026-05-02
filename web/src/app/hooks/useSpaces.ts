@@ -7,6 +7,8 @@ import { useLoadMembersAction } from './useLoadMembersAction';
 import { useLoadSpacesAction } from './useLoadSpacesAction';
 import { useSpaceState } from './useSpaceState';
 import {
+  createInitialJoinForm,
+  createInitialSpaceForm,
   CreateSpaceResponse,
   InlineNotice,
   JoinForm,
@@ -18,7 +20,6 @@ import {
   SpaceRoleDefinition,
   Screen,
   extractSpaceCode,
-  initialSpaceForm,
   normalizeSpaceCode
 } from '../types';
 
@@ -78,7 +79,7 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
       state.setGuestSessionMember(created.member);
       state.setMemberSession(created.session);
       state.setSpaceForm({
-        ...initialSpaceForm,
+        ...createInitialSpaceForm(),
         kind: created.space.kind,
         visibility: created.space.kind === 'owner' ? 'members' : 'private',
         initialPoints: String(created.space.initialPoints),
@@ -93,7 +94,7 @@ export function useSpaces(setScreen: Dispatch<SetStateAction<Screen>>): SpacesCo
     onJoined: async (joined: JoinResponse) => {
       state.setGuestSessionMember(joined.member);
       state.setMemberSession(joined.session);
-      state.setJoinForm((current) => ({ ...current, code: '', displayName: '', roleKey: '' }));
+      state.setJoinForm((current) => ({ ...createInitialJoinForm(), code: '', qrPayload: current.qrPayload }));
       state.setJoinRoleDefinitions([]);
       state.setJoinNotice({
         tone: 'success',

@@ -342,21 +342,21 @@ export async function getSpaceMemberById(memberId: number) {
   const result = await client.execute({
     sql: `
       SELECT
-        id,
-        space_id AS spaceId,
-        display_name AS displayName,
-        role,
-        role_definition_id AS roleDefinitionId,
-        COALESCE(space_role_definitions.role_key, role) AS roleKey,
-        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        space_members.id,
+        space_members.space_id AS spaceId,
+        space_members.display_name AS displayName,
+        space_members.role,
+        space_members.role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, space_members.role) AS roleKey,
+        COALESCE(space_role_definitions.label, space_members.role) AS roleLabel,
         COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
-        is_guest AS isGuest,
-        points,
-        can_transfer AS canTransfer,
-        created_at AS createdAt
+        space_members.is_guest AS isGuest,
+        space_members.points,
+        space_members.can_transfer AS canTransfer,
+        space_members.created_at AS createdAt
       FROM space_members
       LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
-      WHERE id = ?
+      WHERE space_members.id = ?
     `,
     args: [memberId]
   });
@@ -412,23 +412,23 @@ export async function getAuthenticatedMember(spaceId: number, memberId: number, 
   const result = await client.execute({
     sql: `
       SELECT
-        id,
-        space_id AS spaceId,
-        display_name AS displayName,
-        role,
-        role_definition_id AS roleDefinitionId,
-        COALESCE(space_role_definitions.role_key, role) AS roleKey,
-        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        space_members.id,
+        space_members.space_id AS spaceId,
+        space_members.display_name AS displayName,
+        space_members.role,
+        space_members.role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, space_members.role) AS roleKey,
+        COALESCE(space_role_definitions.label, space_members.role) AS roleLabel,
         COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
-        is_guest AS isGuest,
-        points,
-        can_transfer AS canTransfer,
-        created_at AS createdAt,
-        session_token AS sessionToken,
-        session_created_at AS sessionIssuedAt
+        space_members.is_guest AS isGuest,
+        space_members.points,
+        space_members.can_transfer AS canTransfer,
+        space_members.created_at AS createdAt,
+        space_members.session_token AS sessionToken,
+        space_members.session_created_at AS sessionIssuedAt
       FROM space_members
       LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
-      WHERE id = ? AND space_id = ?
+      WHERE space_members.id = ? AND space_members.space_id = ?
     `,
     args: [memberId, spaceId]
   });
@@ -458,23 +458,23 @@ export async function getAuthenticatedMemberById(memberId: number, token: string
   const result = await client.execute({
     sql: `
       SELECT
-        id,
-        space_id AS spaceId,
-        display_name AS displayName,
-        role,
-        role_definition_id AS roleDefinitionId,
-        COALESCE(space_role_definitions.role_key, role) AS roleKey,
-        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        space_members.id,
+        space_members.space_id AS spaceId,
+        space_members.display_name AS displayName,
+        space_members.role,
+        space_members.role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, space_members.role) AS roleKey,
+        COALESCE(space_role_definitions.label, space_members.role) AS roleLabel,
         COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
-        is_guest AS isGuest,
-        points,
-        can_transfer AS canTransfer,
-        created_at AS createdAt,
-        session_token AS sessionToken,
-        session_created_at AS sessionIssuedAt
+        space_members.is_guest AS isGuest,
+        space_members.points,
+        space_members.can_transfer AS canTransfer,
+        space_members.created_at AS createdAt,
+        space_members.session_token AS sessionToken,
+        space_members.session_created_at AS sessionIssuedAt
       FROM space_members
       LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
-      WHERE id = ?
+      WHERE space_members.id = ?
     `,
     args: [memberId]
   });

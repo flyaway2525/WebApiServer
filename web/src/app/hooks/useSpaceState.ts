@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
 import {
+  createInitialJoinForm,
+  createInitialSpaceForm,
   InlineNotice,
   JoinForm,
   Space,
@@ -8,9 +10,7 @@ import {
   SpaceKind,
   SpaceMember,
   SpaceRoleDefinition,
-  SpaceSession,
-  initialJoinForm,
-  initialSpaceForm
+  SpaceSession
 } from '../types';
 
 export function useSpaceState() {
@@ -20,8 +20,8 @@ export function useSpaceState() {
   const [guestSessionMember, setGuestSessionMember] = useState<SpaceMember | null>(null);
   const [memberSession, setMemberSession] = useState<SpaceSession | null>(null);
   const [joinRoleDefinitions, setJoinRoleDefinitions] = useState<SpaceRoleDefinition[]>([]);
-  const [spaceForm, setSpaceForm] = useState(initialSpaceForm);
-  const [joinForm, setJoinForm] = useState(initialJoinForm);
+  const [spaceForm, setSpaceForm] = useState(createInitialSpaceForm);
+  const [joinForm, setJoinForm] = useState(createInitialJoinForm);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [loadingJoinRoleDefinitions, setLoadingJoinRoleDefinitions] = useState(false);

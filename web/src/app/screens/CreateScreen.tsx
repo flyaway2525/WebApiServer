@@ -1,4 +1,5 @@
 import { CreateScreenProps } from '../createScreenProps';
+import { createRandomHostDisplayName, createRandomSpaceName } from '../naming';
 import { SpaceKind, SpaceVisibility, rolePresetOptions } from '../types';
 
 export function CreateScreen(props: CreateScreenProps) {
@@ -25,6 +26,18 @@ export function CreateScreen(props: CreateScreenProps) {
           </div>
           {state.createError ? <p className="error-banner">{state.createError}</p> : null}
           <form onSubmit={actions.onSubmit} className="space-form">
+            <div className="inline-fields action-row">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  actions.onFieldChange('name', createRandomSpaceName());
+                  actions.onFieldChange('hostDisplayName', createRandomHostDisplayName());
+                }}
+              >
+                テスト名を再生成
+              </button>
+            </div>
             <label>
               スペース名
               <input

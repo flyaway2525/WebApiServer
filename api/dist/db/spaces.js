@@ -38,29 +38,29 @@ export async function listSpaceMembers(spaceId) {
     const result = await client.execute({
         sql: `
       SELECT
-        id,
-        space_id AS spaceId,
-        display_name AS displayName,
-        role,
-        role_definition_id AS roleDefinitionId,
-        COALESCE(space_role_definitions.role_key, role) AS roleKey,
-        COALESCE(space_role_definitions.label, role) AS roleLabel,
+        space_members.id,
+        space_members.space_id AS spaceId,
+        space_members.display_name AS displayName,
+        space_members.role,
+        space_members.role_definition_id AS roleDefinitionId,
+        COALESCE(space_role_definitions.role_key, space_members.role) AS roleKey,
+        COALESCE(space_role_definitions.label, space_members.role) AS roleLabel,
         COALESCE(space_role_definitions.capabilities_json, '[]') AS capabilitiesJson,
-        is_guest AS isGuest,
-        points,
-        can_transfer AS canTransfer,
-        created_at AS createdAt
+        space_members.is_guest AS isGuest,
+        space_members.points,
+        space_members.can_transfer AS canTransfer,
+        space_members.created_at AS createdAt
       FROM space_members
       LEFT JOIN space_role_definitions ON space_role_definitions.id = space_members.role_definition_id
-      WHERE space_id = ?
+      WHERE space_members.space_id = ?
       ORDER BY
-        CASE role
+        CASE space_members.role
           WHEN 'bank' THEN 0
           WHEN 'host' THEN 1
           ELSE 2
         END,
-        points DESC,
-        id ASC
+        space_members.points DESC,
+        space_members.id ASC
     `,
         args: [spaceId]
     });

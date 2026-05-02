@@ -1,3 +1,5 @@
+import { createRandomGuestDisplayName, createRandomHostDisplayName, createRandomSpaceName } from './naming';
+
 export type Screen = 'home' | 'menu' | 'create' | 'join' | 'room';
 export type SpaceKind = 'owner' | 'room';
 export type SpaceVisibility = 'private' | 'members' | 'public';
@@ -155,23 +157,27 @@ export type InlineNotice = {
 
 export const apiBaseUrl = 'http://localhost:3000';
 
-export const initialSpaceForm: SpaceForm = {
-  name: '',
-  kind: 'owner',
-  visibility: 'members',
-  rolePreset: 'owner-bank',
-  initialPoints: '10000',
-  allowGuestJoin: true,
-  bankCanMint: true,
-  hostDisplayName: ''
-};
+export function createInitialSpaceForm(): SpaceForm {
+  return {
+    name: createRandomSpaceName(),
+    kind: 'owner',
+    visibility: 'members',
+    rolePreset: 'owner-bank',
+    initialPoints: '10000',
+    allowGuestJoin: true,
+    bankCanMint: true,
+    hostDisplayName: createRandomHostDisplayName()
+  };
+}
 
-export const initialJoinForm: JoinForm = {
-  code: '',
-  displayName: '',
-  roleKey: '',
-  qrPayload: ''
-};
+export function createInitialJoinForm(): JoinForm {
+  return {
+    code: '',
+    displayName: createRandomGuestDisplayName(),
+    roleKey: '',
+    qrPayload: ''
+  };
+}
 
 export const rolePresetOptions: Array<{ value: SpaceRolePresetKey; label: string; kind: SpaceKind }> = [
   { value: 'owner-bank', label: 'Owner + BANK', kind: 'owner' },

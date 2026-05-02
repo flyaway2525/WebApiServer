@@ -1,4 +1,5 @@
 import { JoinScreenProps } from '../joinScreenProps';
+import { createRandomGuestDisplayName } from '../naming';
 import { normalizeSpaceCode } from '../types';
 
 export function JoinScreen(props: JoinScreenProps) {
@@ -29,6 +30,15 @@ export function JoinScreen(props: JoinScreenProps) {
           {state.joinNotice ? <p className={`status-banner status-${state.joinNotice.tone}`}>{state.joinNotice.message}</p> : null}
           {state.joinRoleDefinitionError ? <p className="error-banner">{state.joinRoleDefinitionError}</p> : null}
           <form onSubmit={actions.onSubmit} className="space-form">
+            <div className="inline-fields action-row">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => actions.onFieldChange('displayName', createRandomGuestDisplayName())}
+              >
+                表示名を再生成
+              </button>
+            </div>
             <label>
               スペースコード
               <input
